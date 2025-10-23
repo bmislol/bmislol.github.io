@@ -40,4 +40,158 @@ body {
 
 h1, h2, h3 {
     color: var(--heading-color);
+    margin-bottom: 1rem;
+}
+
+main {
+    /* Add max-width to keep content centered and readable */
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+/* 3. Section Layouts */
+
+/* --- Navbar --- */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background-color: var(--card-bg);
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    transition: background-color var(--transition-speed);
+}
+
+.navbar .logo a {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--heading-color);
+    text-decoration: none;
+}
+
+.nav-links a {
+    margin: 0 1rem;
+    color: var(--text-color);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color var(--transition-speed);
+}
+.nav-links a:hover {
+    color: var(--accent-color);
+}
+
+#theme-toggle-btn {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: color var(--transition-speed);
+}
+#theme-toggle-btn:hover {
+    color: var(--accent-color);
+}
+
+/* --- Hero Section (Split Grid) --- */
+.hero-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Two equal columns */
+    align-items: center;
+    gap: 2rem;
+    padding: 4rem 0;
+    min-height: 80vh;
+}
+
+.hero-text h1 {
+    font-size: 3rem;
+}
+
+.hero-contact {
+    margin-top: 1.5rem;
+}
+
+.hero-contact a {
+    color: var(--text-color);
+    font-size: 2rem;
+    margin-right: 1.5rem;
+    transition: color var(--transition-speed);
+}
+.hero-contact a:hover {
+    color: var(--accent-color);
+}
+
+.placeholder-image {
+    width: 100%;
+    height: 400px;
+    background-color: var(--card-bg);
+    border: 2px dashed var(--border-color);
+    border-radius: var(--border-radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: var(--text-color);
+}
+
+/* --- Career Section (Tabs) --- */
+.tab-buttons {
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    padding: 1rem 1.5rem;
+    font-size: 1.1rem;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all var(--transition-speed);
+}
+
+.tab-btn.active {
+    color: var(--accent-color);
+    border-bottom: 2px solid var(--accent-color);
+}
+
+.tab-panel {
+    display: none; /* Hidden by default */
+}
+
+.tab-panel.active {
+    display: block; /* Shown when active */
+}
+
+.card {
+    background-color: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1rem;
+    border: 1px solid var(--border-color);
+}
+
+/* --- Responsive (Mobile) --- */
+@media (max-width: 768px) {
+    .hero-section {
+        grid-template-columns: 1fr; /* Stack columns on mobile */
+        text-align: center;
+    }
+
+    .hero-image {
+        grid-row: 1; /* Move image to the top on mobile */
+        height: 250px;
+    }
+    
+    .hero-contact {
+        justify-content: center;
+    }
+    
+    .nav-links {
+        /* This is a simple version. A real mobile menu is more complex */
+        display: none; 
+    }
 }
