@@ -174,28 +174,6 @@ main {
     border: 1px solid var(--border-color);
 }
 
-/* --- Responsive (Mobile) --- */
-@media (max-width: 768px) {
-    .hero-section {
-        grid-template-columns: 1fr; /* Stack columns on mobile */
-        text-align: center;
-    }
-
-    .hero-image {
-        grid-row: 1; /* Move image to the top on mobile */
-        height: 250px;
-    }
-    
-    .hero-contact {
-        justify-content: center;
-    }
-    
-    .nav-links {
-        /* This is a simple version. A real mobile menu is more complex */
-        display: none; 
-    }
-}
-
 /* --- Projects Section --- */
 .projects-section {
     padding-top: 2rem;
@@ -383,4 +361,41 @@ main {
 .cert-info strong {
     color: var(--heading-color);
     font-size: 1.1rem;
+}
+
+/* --- Responsive (Mobile) --- */
+@media (max-width: 768px) {
+
+    .navbar {
+        padding: 1rem; 
+    }
+    .nav-links {
+        display: none; 
+    }
+
+    /* --- Hero Section Fix --- */
+    .hero-section {
+        display: block; 
+        text-align: center;
+        min-height: auto; 
+        padding: 2rem 0 4rem 0; 
+    }
+    
+    .hero-image {
+        max-width: 100%;
+        margin-top: 2rem; 
+    }
+
+    .placeholder-image {
+        height: 250px; 
+    }
+    
+    .hero-contact {
+        display: flex; 
+        justify-content: center;
+    }
+    
+    .hero-text h1 {
+        font-size: 2.5rem; 
+    }
 }
