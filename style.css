@@ -277,3 +277,52 @@ main {
 .card p {
     margin-bottom: 0.5rem;
 }
+
+/* --- Skills Section --- */
+.skills-section {
+    padding-top: 2rem; /* Add some space above */
+}
+
+.skill-group {
+    margin-bottom: 2.5rem; /* Space between skill groups */
+}
+
+.skill-group h4 {
+    /* Use the secondary accent color for subheadings */
+    color: var(--accent-color-2); 
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+}
+
+.skills-grid {
+    display: grid;
+    /* Responsive grid: items are at least 120px wide */
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+}
+
+.skill-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    text-align: center;
+    font-weight: 500;
+    transition: transform var(--transition-speed), background-color var(--transition-speed), color var(--transition-speed);
+}
+
+.skill-card:hover {
+    transform: translateY(-3px);
+    background-color: var(--accent-color);
+}
+
+/* On hover, change text color for better contrast */
+[data-theme="light"] .skill-card:hover {
+    color: #ffffff; /* Use pure white on the light-theme accent */
+}
+
+[data-theme="dark"] .skill-card:hover {
+     color: var(--bg-color); /* Use the dark bg color on the dark-theme accent */
+}
