@@ -195,3 +195,56 @@ main {
         display: none; 
     }
 }
+
+/* --- Projects Section --- */
+.projects-section {
+    padding-top: 2rem;
+}
+
+.projects-container {
+    display: grid;
+    /* Creates a responsive grid of columns (min 300px, max 1fr) */
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.project-card {
+    background-color: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    text-decoration: none; /* Removes underline from the link */
+    color: var(--text-color);
+    display: flex; /* Helps with a clean footer */
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+}
+
+.project-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode shadow */
+[data-theme="dark"] .project-card:hover {
+     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.project-card h3 {
+    color: var(--accent-color);
+    margin-bottom: 0.75rem;
+    text-transform: capitalize; /* Cleans up repo names */
+}
+
+.project-card p {
+    margin-bottom: 1rem;
+    flex-grow: 1; /* Pushes footer to the bottom */
+}
+
+.project-footer {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    color: var(--accent-color-2);
+}

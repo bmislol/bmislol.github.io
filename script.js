@@ -48,4 +48,51 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+    fetchGitHubProjects();
+
 });
+
+// --- GitHub Projects Loader ---
+async function fetchGitHubProjects() {
+    const container = document.querySelector('.projects-container');
+    const username = 'bmislol';
+    
+    // This API call fetches repos, sorted by the last date they were pushed (most recent first)
+    const url = `https://api.github.com/users/${username}/repos?sort=pushed&direction=desc`;
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`GitHub API error: ${response.status}`);
+        }
+        const repos = await response.json();
+
+        if (repos.length === 0) {
+            container.innerHTML = '<p>No public projects found.</p>';
+            return;
+        }
+
+        repos.forEach(repo => {
+            // Create the card as a link (<a> tag)
+            const card = document.createElement('a');
+            card.className = 'project-card';
+            card.href = repo.html_url; // This makes it click-to-repo
+            card.target = '_blank';    // Opens in a new tab
+            card.rel = 'noopener noreferrer'; // Security best practice
+
+            card.innerHTML = `
+                <h3>${repo.name.replaceAll('-', ' ')}</h3>
+                <p>${repo.description || "No description provided."}</p>
+                <div class="project-footer">
+                    <span>${repo.language || 'Code'}</span>
+                    <span>★ ${repo.stargazers_count}</span>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+
+    } catch (error) {
+        console.error('Failed to fetch GitHub projects:', error);
+        container.innerHTML = '<p>Could not load projects. Please try again later.</p>';
+    }
+}
