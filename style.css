@@ -248,3 +248,28 @@ main {
     font-size: 0.9rem;
     color: var(--accent-color-2);
 }
+
+/* --- Styling for Card Content --- */
+.card h4 {
+    color: var(--heading-color);
+    font-size: 1.25rem;
+    margin-bottom: 0.25rem;
+}
+
+.card .card-subtitle {
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: var(--accent-color-2);
+    margin-bottom: 1rem;
+}
+
+.card ul {
+    /* Resets default browser list styling */
+    list-style-type: disc; /* Use a standard disc bullet */
+    padding-left: 20px; /* Indent the bullet points */
+    margin-top: 1rem;
+}
+
+.card ul li {
+    margin-bottom: 0.5rem; /* Space between bullet points */
+}
