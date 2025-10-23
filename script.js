@@ -50,6 +50,34 @@ document.addEventListener("DOMContentLoaded", () => {
 
     fetchGitHubProjects();
 
+    const hamburgerBtn = document.getElementById('hamburger-btn');
+    const navContainer = document.querySelector('.nav-container');
+    const navLinks = document.querySelectorAll('.nav-links a');
+
+    hamburgerBtn.addEventListener('click', () => {
+        navContainer.classList.toggle('active');
+        const icon = hamburgerBtn.querySelector('i');
+        if (icon.classList.contains('fa-bars')) {
+            icon.classList.remove('fa-bars');
+            icon.classList.add('fa-times');
+        } else {
+            icon.classList.remove('fa-times');
+            icon.classList.add('fa-bars');
+        }
+
+});
+
+// Close menu when a link is clicked (on mobile)
+    navLinks.forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth <= 768) {
+                navContainer.classList.remove('active');
+                // Reset icon to bars
+                hamburgerBtn.querySelector('i').classList.add('fa-bars');
+                hamburgerBtn.querySelector('i').classList.remove('fa-times');
+            }
+        });
+    });
 });
 
 // --- GitHub Projects Loader ---

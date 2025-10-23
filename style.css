@@ -52,6 +52,34 @@ main {
 
 /* 3. Section Layouts */
 
+/* --- Hamburger Menu Styles --- */
+#hamburger-btn {
+    display: none; /* Hidden on desktop */
+    background: none;
+    border: none;
+    color: var(--text-color);
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+.nav-container {
+    display: flex; /* On desktop, just show everything in a row */
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.logo-box {
+    border: 2px solid var(--heading-color);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    transition: all var(--transition-speed);
+}
+.logo-box:hover {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+    color: var(--bg-color);
+}
+
 /* --- Navbar --- */
 .navbar {
     display: flex;
@@ -98,12 +126,13 @@ main {
 
 /* --- Hero Section (Split Grid) --- */
 .hero-section {
-    display: grid;
-    grid-template-columns: 1fr 1fr; /* Two equal columns */
-    align-items: center;
-    gap: 2rem;
     padding: 4rem 0;
     min-height: 80vh;
+    /* We can also center the text if you like */
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .hero-text h1 {
@@ -122,19 +151,6 @@ main {
 }
 .hero-contact a:hover {
     color: var(--accent-color);
-}
-
-.placeholder-image {
-    width: 100%;
-    height: 400px;
-    background-color: var(--card-bg);
-    border: 2px dashed var(--border-color);
-    border-radius: var(--border-radius);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.2rem;
-    color: var(--text-color);
 }
 
 /* --- Career Section (Tabs) --- */
@@ -369,9 +385,71 @@ main {
     .navbar {
         padding: 1rem; 
     }
-    .nav-links {
-        display: none; 
+    #hamburger-btn {
+        display: block; /* Show hamburger on mobile */
+        z-index: 1001; /* Make sure it's above the slide-down menu */
     }
+    .nav-container {
+        /* This is the slide-down menu */
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        
+        background-color: var(--card-bg);
+        border-bottom: 1px solid var(--border-color);
+        padding: 6rem 1rem 2rem 1rem; /* Add padding for links */
+
+        /* Stack items vertically */
+        flex-direction: column; 
+        align-items: center;
+        gap: 1.5rem;
+
+        /* Hide it by default */
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-100%);
+        transition: transform var(--transition-speed), opacity var(--transition-speed), visibility var(--transition-speed);
+    }
+
+    .nav-container.active {
+        /* Show it when active */
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+    
+    /* ADD THIS BLOCK in its place */
+.nav-links {
+    flex-direction: column; /* Stack links */
+    align-items: stretch; /* Make children fill the width */
+    gap: 1rem; /* Slightly smaller gap between buttons */
+    width: 90%; /* Make the link container not touch the screen edges */
+}
+
+.nav-links a {
+    font-size: 1.1rem; 
+    font-weight: 500;
+    margin: 0; 
+    padding: 0.75rem; /* Add padding to make it "button-like" */
+    text-align: center;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color); /* Add a border */
+    transition: background-color var(--transition-speed), color var(--transition-speed);
+}
+
+.nav-links a:hover {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+/* Add hover text color rules separately */
+[data-theme="light"] .nav-links a:hover {
+    color: #ffffff;
+}
+[data-theme="dark"] .nav-links a:hover {
+    color: var(--bg-color);
+}
 
     /* --- Hero Section Fix --- */
     .hero-section {
@@ -379,15 +457,6 @@ main {
         text-align: center;
         min-height: auto; 
         padding: 2rem 0 4rem 0; 
-    }
-    
-    .hero-image {
-        max-width: 100%;
-        margin-top: 2rem; 
-    }
-
-    .placeholder-image {
-        height: 250px; 
     }
     
     .hero-contact {
