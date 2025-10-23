@@ -1,0 +1,43 @@
+/* Default: Everforest Light (Soft) */
+:root {
+    --bg-color: #E5DFC5;        /* (bg_dim from light image) */
+    --text-color: #5C6A72;    /* (fg from light image) */
+    --card-bg: #EAE4CA;       /* (bg1 from light image) */
+    --heading-color: #5C6A72;   /* (fg from light image) */
+    --accent-color: #8DA101;    /* (green from light image) */
+    --accent-color-2: #DFA000;  /* (yellow from light image) */
+    --border-color: #D8D3BA;    /* (bg4 from light image) */
+    
+    --transition-speed: 0.3s ease;
+    --border-radius: 8px;
+}
+
+/* Alternative: Everforest Dark (Soft) */
+[data-theme="dark"] {
+    --bg-color: #293136;        /* (bg_dim from dark image) */
+    --text-color: #D3C6AA;    /* (fg from dark image) */
+    --card-bg: #3A464C;       /* (bg1 from dark image) */
+    --heading-color: #D3C6AA;   /* (fg from dark image) */
+    --accent-color: #A7C080;    /* (green from dark image) */
+    --accent-color-2: #DBBC7F;  /* (yellow from dark image) */
+    --border-color: #555F66;    /* (bg4 from dark image) */
+}
+
+/* 2. Global Reset and Body Styling */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    transition: background-color var(--transition-speed), color var(--transition-speed);
+}
+
+h1, h2, h3 {
+    color: var(--heading-color);
+}
