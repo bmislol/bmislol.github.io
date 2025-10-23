@@ -326,3 +326,61 @@ main {
 [data-theme="dark"] .skill-card:hover {
      color: var(--bg-color); /* Use the dark bg color on the dark-theme accent */
 }
+
+/* --- Certificates Section --- */
+.certs-grid {
+    display: grid;
+    /* Responsive grid, 2-3 columns */
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.cert-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    text-align: center;
+    display: flex; /* Helps align content */
+    flex-direction: column;
+    justify-content: space-between; /* Pushes info to the bottom */
+    transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+}
+
+.cert-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .cert-card:hover {
+     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.cert-card a {
+    display: block;
+    margin-bottom: 1rem;
+    flex-grow: 1; /* Allows image to fill space */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cert-card img {
+    /* Ensure images are responsive and don't overflow */
+    max-width: 100%;
+    height: auto;
+    /* Give all certs a consistent max height */
+    max-height: 200px; 
+    object-fit: contain; /* Don't stretch images */
+    border-radius: 4px; 
+}
+
+.cert-info {
+    margin-top: 1rem;
+    line-height: 1.4;
+}
+
+.cert-info strong {
+    color: var(--heading-color);
+    font-size: 1.1rem;
+}
