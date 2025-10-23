@@ -273,3 +273,7 @@ main {
 .card ul li {
     margin-bottom: 0.5rem; /* Space between bullet points */
 }
+
+.card p {
+    margin-bottom: 0.5rem;
+}
