@@ -1,211 +1,419 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Charbel Ghanem - Portfolio</title>
+    <meta name="description" content="Charbel Ghanem — computer science graduate. Backend, AI, and a soft spot for pixels. Open to software dev roles.">
+    <title>Charbel Ghanem — Portfolio</title>
+
+    <!-- No-flash theme + CRT: runs before paint so the theme never flickers -->
+    <script>
+        (function () {
+            try {
+                var t = localStorage.getItem('theme');
+                if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                document.documentElement.setAttribute('data-theme', t);
+                if (localStorage.getItem('crt') === 'on') document.documentElement.setAttribute('data-crt', 'on');
+            } catch (e) {}
+        })();
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&family=Press+Start+2P&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
 <body>
 
-    <header class="navbar">
-        <div class="logo">
-            <a href="#" class="logo-box">CG</a>
+    <!-- Boot splash: fades out via CSS, so it works even without JS -->
+    <div id="boot" aria-hidden="true">
+        <div class="boot-inner">
+            <div class="boot-logo">CG</div>
+            <div class="boot-line">loading charbel.exe</div>
+            <div class="boot-bar"><span></span></div>
         </div>
-            <div class="nav-container">
-                <nav class="nav-links">
-                    <a href="#home">Home</a>
-                    <a href="#career">Career</a>
-                    <a href="#skills">Skills</a>
-                    <a href="#projects">Projects</a>
-                    <a href="#contact">Contact</a>
-                </nav>
-                <button id="theme-toggle-btn">
-                    <i class="fas fa-moon"></i> 
+    </div>
+
+    <a href="#home" class="skip-link">Skip to content</a>
+
+    <header class="navbar">
+        <a href="#home" class="logo-box" aria-label="Home">CG</a>
+
+        <div class="nav-container">
+            <nav class="nav-links" aria-label="Primary">
+                <a href="#home">home</a>
+                <a href="#career">career</a>
+                <a href="#skills">skills</a>
+                <a href="#projects">projects</a>
+                <a href="#quests" class="nav-quest">quests</a>
+                <a href="#contact">contact</a>
+            </nav>
+            <div class="nav-tools">
+                <button id="crt-toggle" class="icon-btn" aria-label="Toggle CRT effect" title="Toggle CRT effect" aria-pressed="false">
+                    <i class="fas fa-tv" aria-hidden="true"></i>
+                </button>
+                <button id="theme-toggle" class="icon-btn" aria-label="Toggle dark mode" title="Toggle theme">
+                    <i class="fas fa-moon" aria-hidden="true"></i>
                 </button>
             </div>
-        
-        <button id="hamburger-btn">
-            <i class="fas fa-bars"></i>
+        </div>
+
+        <button id="hamburger" class="icon-btn hamburger" aria-label="Open menu" aria-expanded="false">
+            <i class="fas fa-bars" aria-hidden="true"></i>
         </button>
     </header>
 
     <main>
-        <section id="home" class="hero-section">
-            <div class="hero-text">
-                <h1>Hello, I'm Charbel Ghanem</h1>
-                <p>Hello! I'm a recent CS graduate with a strong passion for coding and problem-solving. I'm driven by a growth mindset, which means I'm always learning and not afraid to tackle new challenges or technologies. I'm actively looking for a software development position where I can make an impact, learn from a team, and use constructive feedback to build my expertise</p>
-                <div class="hero-contact">
-                    <a href="https://github.com/bmislol" target="_blank" title="GitHub"><i class="fab fa-github"></i></a>
-                    <a href="https://www.linkedin.com/in/ghanemch" target="_blank" title="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
-                    <a href="mailto:charbelghanem219@gmail.com" title="charbelghanem219@gmail.com"><i class="fas fa-envelope"></i></a>
+        <!-- ============ HERO / TITLE SCREEN ============ -->
+        <section id="home" class="hero">
+            <div class="hero-scene" aria-hidden="true">
+                <svg class="sun" viewBox="0 0 16 16">
+                    <rect x="5" y="5" width="6" height="6"/><rect class="sun-hi" x="6" y="6" width="2" height="2"/>
+                    <rect class="ray" x="7" y="1" width="2" height="3"/><rect class="ray" x="7" y="12" width="2" height="3"/>
+                    <rect class="ray" x="1" y="7" width="3" height="2"/><rect class="ray" x="12" y="7" width="3" height="2"/>
+                </svg>
+                <svg class="cloud cloud-a" viewBox="0 0 24 10"><rect x="4" y="4" width="16" height="4"/><rect x="7" y="2" width="9" height="3"/><rect x="2" y="6" width="20" height="2"/></svg>
+                <svg class="cloud cloud-b" viewBox="0 0 24 10"><rect x="4" y="4" width="16" height="4"/><rect x="7" y="2" width="9" height="3"/><rect x="2" y="6" width="20" height="2"/></svg>
+            </div>
+
+            <div class="hero-grid">
+                <div class="hero-text">
+                    <p class="eyebrow">hello world</p>
+                    <h1>Hi, I'm <span class="accent">Charbel Ghanem</span></h1>
+                    <p class="hero-sub">CS grad · backend &amp; AI · learning to build games</p>
+                    <p class="hero-body">I turn hard problems into things that actually run — backends, AI pipelines, and the occasional side quest. I learn fast, I like feedback, and I'm after a software dev role where I can build, ship, and level up with a team.</p>
+
+                    <div class="status-chip"><span class="blink">▸</span> open to software dev roles</div>
+
+                    <div class="hero-social">
+                        <a class="pixel-btn" href="https://github.com/bmislol" target="_blank" rel="noopener noreferrer" aria-label="GitHub"><i class="fab fa-github" aria-hidden="true"></i></a>
+                        <a class="pixel-btn" href="https://www.linkedin.com/in/ghanemch" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><i class="fab fa-linkedin-in" aria-hidden="true"></i></a>
+                        <a class="pixel-btn" href="mailto:charbelghanem219@gmail.com" aria-label="Email"><i class="fas fa-envelope" aria-hidden="true"></i></a>
+                    </div>
+                </div>
+
+                <div class="hero-avatar">
+                    <div class="avatar-frame">
+                        <img src="assets/images/avatar.png" alt="Pixel-art portrait of Charbel Ghanem" width="160" height="171">
+                    </div>
+                    <div class="avatar-tag">player_1</div>
                 </div>
             </div>
+
+            <a href="#career" class="press-start">▸ press start</a>
         </section>
 
-        <section id="career" class="career-section">
-            <h2>My Journey</h2>
-            <div class="tab-buttons">
-                <button class="tab-btn active" data-tab="education">Education</button>
-                <button class="tab-btn" data-tab="certificates">Certificates</button>
-                <button class="tab-btn" data-tab="experience">Experience</button>
+        <!-- pixel hills divider -->
+        <svg class="hills" viewBox="0 0 680 64" preserveAspectRatio="none" aria-hidden="true">
+            <path class="hill-back" d="M0 34 L90 22 L190 32 L300 18 L430 30 L560 20 L680 30 L680 64 L0 64 Z"/>
+            <path class="hill-front" d="M0 46 L120 36 L250 46 L380 34 L520 46 L680 38 L680 64 L0 64 Z"/>
+            <g class="tree"><rect class="trunk" x="146" y="34" width="4" height="10"/><rect x="140" y="30" width="16" height="6"/><rect x="143" y="24" width="10" height="6"/><rect class="tree-hi" x="145" y="19" width="6" height="6"/></g>
+            <g class="tree"><rect class="trunk" x="356" y="30" width="4" height="12"/><rect x="349" y="25" width="18" height="7"/><rect x="352" y="18" width="12" height="7"/><rect class="tree-hi" x="355" y="12" width="6" height="7"/></g>
+            <g class="tree"><rect class="trunk" x="560" y="36" width="4" height="10"/><rect x="554" y="32" width="16" height="6"/><rect class="tree-hi" x="557" y="26" width="10" height="6"/></g>
+        </svg>
+
+        <!-- ============ CAREER ============ -->
+        <section id="career" class="section">
+            <div class="section-head">
+                <p class="eyebrow">// my-journey</p>
+                <h2>Career</h2>
             </div>
-            
+
+            <div class="tab-buttons" role="tablist" aria-label="Career sections">
+                <button class="tab-btn active" data-tab="education" role="tab" aria-selected="true">Education</button>
+                <button class="tab-btn" data-tab="experience" role="tab" aria-selected="false">Experience</button>
+                <button class="tab-btn" data-tab="certificates" role="tab" aria-selected="false">Certificates</button>
+            </div>
+
             <div class="tab-content">
-                <div id="education" class="tab-panel active">
-                    <h3>Education</h3>
+                <div id="education" class="tab-panel active" role="tabpanel">
                     <div class="card">
-                        <h4>BS in Computer Science</h4>
-                        <p class="card-subtitle">Lebanese International University (LIU) | 2022 - 2025</p>
-                        <P>GPA: 3.59</P>
+                        <h3>B.S. in Computer Science</h3>
+                        <p class="card-sub">Lebanese International University (LIU) · 2022 – 2025</p>
+                        <p>GPA: 3.53</p>
                     </div>
-
                     <div class="card">
-                        <h4>Lebanese Baccalaureate in SE</h4>
-                        <p class="card-subtitle">Rosaire Mountazah | 2022</p>
+                        <h3>Lebanese Baccalaureate — Sociology &amp; Economics</h3>
+                        <p class="card-sub">Rosaire Mountazah · 2022</p>
                     </div>
                 </div>
-                <div id="certificates" class="tab-panel">
-                    <h3>Certificates & Badges</h3>
-                    <div class="certs-grid">
-        
-                        <div class="cert-card">
-                            <a href="assets/images/certificates/Lebanese International Universsity Certificate.jpg" target="_blank" title="View Certificate">
-                                <img src="assets/images/certificates/Lebanese International Universsity Certificate.jpg" alt="Lebanese International University Certificate">
-                            </a>
-                            <div class="cert-info">
-                                <strong>University Certificate</strong><br/>
-                                Lebanese International University
-                            </div>
-                        </div>
 
-                        <div class="cert-card">
-                            <a href="assets/images/certificates/The Git & Github Bootcamp.jpg" target="_blank" title="View Certificate">
-                                <img src="assets/images/certificates/The Git & Github Bootcamp.jpg" alt="The Git & Github Bootcamp Certificate">
-                            </a>
-                            <div class="cert-info">
-                                <strong>The Git & Github Bootcamp</strong><br/>
-                                Udemy
-                            </div>
-                        </div>
-
-                        <div class="cert-card">
-                            <a href="assets/images/certificates/Linux Command Line Bootcamp.jpg" target="_blank" title="View Certificate">
-                                <img src="assets/images/certificates/Linux Command Line Bootcamp.jpg" alt="Linux Command Line Bootcamp Certificate">
-                            </a>
-                            <div class="cert-info">
-                                <strong>Linux Command Line Bootcamp</strong><br/>
-                                Udemy
-                            </div>
-                        </div>
-
-                        <div class="cert-card">
-                            <a href="assets/images/certificates/The Ultimate MySQL Bootcamp_ Go from SQL Beginner to Expert.jpg" target="_blank" title="View Certificate">
-                                <img src="assets/images/certificates/The Ultimate MySQL Bootcamp_ Go from SQL Beginner to Expert.jpg" alt="The Ultimate MySQL Bootcamp Certificate">
-                            </a>
-                            <div class="cert-info">
-                                <strong>The Ultimate MySQL Bootcamp</strong><br/>
-                                Udemy
-                            </div>
-                        </div>
-
-                        <div class="cert-card">
-                            <a href="https://verify.openedg.org/?id=RRXj.EXf2.av8e" target="_blank" title="Verify Badge">
-                                <img src="assets/images/badges/pcep-entry-level.png" alt="PCEP Entry-Level">
-                            </a>
-                            <div class="cert-info">
-                                <strong>PCEP - Entry-Level Python</strong><br/>
-                                July 24, 2024
-                            </div>
-                        </div>
-
-                        <div class="cert-card">
-                            <a href="https://www.netacad.com/certificates?issuanceId=e6f57ec5-09bd-46f5-b914-905c4735642b" target="_blank" title="Verify Badge">
-                                <img src="assets/images/badges/ccna-switching.png" alt="CCNA Switching">
-                            </a>
-                            <div class="cert-info">
-                                <strong>CCNA: Switching, Routing, and Wireless Essentials</strong><br/>
-                                July 18, 2024
-                            </div>
-                        </div>
-
-                        <div class="cert-card">
-                            <a href="https://www.netacad.com/certificates?issuanceId=8215508e-af84-470c-ab5f-0beb139ca94c" target="_blank" title="Verify Badge">
-                                <img src="assets/images/badges/ccna-networks.png" alt="CCNA Networks">
-                            </a>
-                            <div class="cert-info">
-                                <strong>CCNA: Introduction to Networks</strong><br/>
-                                February 27, 2024
-                            </div>
-                        </div>
-                                        
-                    </div>
-                </div>
-                <div id="experience" class="tab-panel">
-                    <h3>Experience</h3>
+                <div id="experience" class="tab-panel" role="tabpanel" hidden>
                     <div class="card">
-                        <h4>Call Center Agent</h4>
-                        <p class="card-subtitle">Pizza Hut | 2023 - 2025</p>
+                        <h3>Call Center Agent</h3>
+                        <p class="card-sub">Pizza Hut · 2023 – 2025</p>
                         <ul>
-                            <li>Took customer orders via phone and digital platforms</li>
-                            <li>Handled customer complaints and ensured high satisfaction levels</li>
-                            <li>Maintained a clean and organized call center environment</li>
-                            <li>Recognized as Employee of the Month</li>
+                            <li>Handled customer orders and inquiries across phone and online platforms.</li>
+                            <li>Resolved complaints and kept satisfaction high under pressure.</li>
+                            <li>Awarded Employee of the Month.</li>
                         </ul>
                     </div>
                 </div>
+
+                <div id="certificates" class="tab-panel" role="tabpanel" hidden>
+                    <div class="certs-grid">
+                        <div class="cert-card featured">
+                            <span class="cert-flag">newest</span>
+                            <a href="assets/images/certificates/SE Factory AIE Bootcamp.jpg" target="_blank" rel="noopener" title="View certificate">
+                                <img src="assets/images/certificates/SE Factory AIE Bootcamp.jpg" alt="SE Factory AI Engineering Bootcamp certificate" loading="lazy">
+                            </a>
+                            <div class="cert-info"><strong>AI Engineering Bootcamp</strong><span>SE Factory · 2026</span></div>
+                        </div>
+                        <div class="cert-card">
+                            <a href="assets/images/certificates/Lebanese International Universsity Certificate.jpg" target="_blank" rel="noopener" title="View certificate">
+                                <img src="assets/images/certificates/Lebanese International Universsity Certificate.jpg" alt="Lebanese International University certificate" loading="lazy">
+                            </a>
+                            <div class="cert-info"><strong>University Certificate</strong><span>Lebanese International University</span></div>
+                        </div>
+                        <div class="cert-card">
+                            <a href="assets/images/certificates/The Git & Github Bootcamp.jpg" target="_blank" rel="noopener" title="View certificate">
+                                <img src="assets/images/certificates/The Git & Github Bootcamp.jpg" alt="The Git and GitHub Bootcamp certificate" loading="lazy">
+                            </a>
+                            <div class="cert-info"><strong>Git &amp; GitHub Bootcamp</strong><span>Udemy · 2025</span></div>
+                        </div>
+                        <div class="cert-card">
+                            <a href="assets/images/certificates/Linux Command Line Bootcamp.jpg" target="_blank" rel="noopener" title="View certificate">
+                                <img src="assets/images/certificates/Linux Command Line Bootcamp.jpg" alt="Linux Command Line Bootcamp certificate" loading="lazy">
+                            </a>
+                            <div class="cert-info"><strong>Linux Command Line</strong><span>Udemy · 2025</span></div>
+                        </div>
+                        <div class="cert-card">
+                            <a href="assets/images/certificates/The Ultimate MySQL Bootcamp_ Go from SQL Beginner to Expert.jpg" target="_blank" rel="noopener" title="View certificate">
+                                <img src="assets/images/certificates/The Ultimate MySQL Bootcamp_ Go from SQL Beginner to Expert.jpg" alt="The Ultimate MySQL Bootcamp certificate" loading="lazy">
+                            </a>
+                            <div class="cert-info"><strong>Ultimate MySQL Bootcamp</strong><span>Udemy · 2025</span></div>
+                        </div>
+                        <div class="cert-card">
+                            <a href="https://verify.openedg.org/?id=RRXj.EXf2.av8e" target="_blank" rel="noopener" title="Verify badge">
+                                <img src="assets/images/badges/pcep-entry-level.png" alt="PCEP Entry-Level Python badge" loading="lazy">
+                            </a>
+                            <div class="cert-info"><strong>PCEP — Entry-Level Python</strong><span>OpenEDG · 2024</span></div>
+                        </div>
+                        <div class="cert-card">
+                            <a href="https://www.netacad.com/certificates?issuanceId=e6f57ec5-09bd-46f5-b914-905c4735642b" target="_blank" rel="noopener" title="Verify badge">
+                                <img src="assets/images/badges/ccna-switching.png" alt="CCNA Switching, Routing, and Wireless Essentials badge" loading="lazy">
+                            </a>
+                            <div class="cert-info"><strong>CCNA — Switching &amp; Routing</strong><span>Cisco · 2024</span></div>
+                        </div>
+                        <div class="cert-card">
+                            <a href="https://www.netacad.com/certificates?issuanceId=8215508e-af84-470c-ab5f-0beb139ca94c" target="_blank" rel="noopener" title="Verify badge">
+                                <img src="assets/images/badges/ccna-networks.png" alt="CCNA Introduction to Networks badge" loading="lazy">
+                            </a>
+                            <div class="cert-info"><strong>CCNA — Intro to Networks</strong><span>Cisco · 2024</span></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
 
-        <section id="skills" class="skills-section">
-            <h2>Skills</h2>
-            <div class="skills-container">
-                <div class="skill-group">
-                    <h4>Languages</h4>
-                    <div class="skills-grid">
-                        <div class="skill-card">Java</div>
-                        <div class="skill-card">Python</div>
-                        <div class="skill-card">C#</div>
-                        <div class="skill-card">HTML</div>
-                        <div class="skill-card">CSS</div>
-                        <div class="skill-card">JavaScript</div>
-                        <div class="skill-card">PHP</div>
+        <!-- ============ SKILLS / INVENTORY ============ -->
+        <section id="skills" class="section">
+            <div class="section-head">
+                <p class="eyebrow">// inventory</p>
+                <h2>Skills</h2>
+                <p class="section-note">Hover an item to see what slot it lives in.</p>
+            </div>
+
+            <div class="inventory">
+                <div class="inv-group">
+                    <div class="inv-head"><i class="fas fa-code" aria-hidden="true"></i> Languages</div>
+                    <div class="inv-slots">
+                        <span class="item" data-tip="Language">Java</span>
+                        <span class="item" data-tip="Language">Python</span>
+                        <span class="item" data-tip="Language">C#</span>
+                        <span class="item" data-tip="Language">C++</span>
+                        <span class="item" data-tip="Language">JavaScript</span>
+                        <span class="item" data-tip="Markup">HTML</span>
+                        <span class="item" data-tip="Styling">CSS</span>
+                        <span class="item" data-tip="Language">PHP</span>
                     </div>
                 </div>
-
-                <div class="skill-group">
-                    <h4>Frameworks & Libraries</h4>
-                    <div class="skills-grid">
-                        <div class="skill-card">Google OR-Tools</div>
-                        <div class="skill-card">Spring Boot</div>
-                        <div class="skill-card">Pandas</div>
-                        <div class="skill-card">Flask</div>
+                <div class="inv-group">
+                    <div class="inv-head"><i class="fas fa-server" aria-hidden="true"></i> Backend</div>
+                    <div class="inv-slots">
+                        <span class="item" data-tip="Java">Spring Boot</span>
+                        <span class="item" data-tip="Python">FastAPI</span>
+                        <span class="item" data-tip="Python">Flask</span>
+                        <span class="item" data-tip="JavaScript">Node.js</span>
                     </div>
                 </div>
-
-                <div class="skill-group">
-                    <h4>Tools & Concepts</h4>
-                    <div class="skills-grid">
-                        <div class="skill-card">MySQL</div>
-                        <div class="skill-card">PostgreSQL</div>
-                        <div class="skill-card">Git</div>
-                        <div class="skill-card">Constraint Programming</div>
+                <div class="inv-group">
+                    <div class="inv-head"><i class="fas fa-database" aria-hidden="true"></i> Databases</div>
+                    <div class="inv-slots">
+                        <span class="item" data-tip="+ pgvector">PostgreSQL</span>
+                        <span class="item" data-tip="Relational">MySQL</span>
+                        <span class="item" data-tip="Relational">SQL Server</span>
+                    </div>
+                </div>
+                <div class="inv-group">
+                    <div class="inv-head"><i class="fas fa-laptop-code" aria-hidden="true"></i> Frontend</div>
+                    <div class="inv-slots">
+                        <span class="item" data-tip="Library">React</span>
+                        <span class="item" data-tip="Python UI">Streamlit</span>
+                        <span class="item" data-tip="Async">AJAX</span>
+                    </div>
+                </div>
+                <div class="inv-group">
+                    <div class="inv-head"><i class="fas fa-brain" aria-hidden="true"></i> AI &amp; Data</div>
+                    <div class="inv-slots">
+                        <span class="item" data-tip="ML">Machine Learning</span>
+                        <span class="item" data-tip="Neural nets">Deep Learning</span>
+                        <span class="item" data-tip="Data">Pandas</span>
+                        <span class="item" data-tip="Data">NumPy</span>
+                        <span class="item" data-tip="Plots">Matplotlib</span>
+                        <span class="item" data-tip="Tesseract">OCR</span>
+                        <span class="item" data-tip="Optimization">Google OR-Tools</span>
+                        <span class="item" data-tip="CP">Constraint Programming</span>
+                    </div>
+                </div>
+                <div class="inv-group">
+                    <div class="inv-head"><i class="fas fa-robot" aria-hidden="true"></i> LLM &amp; GenAI</div>
+                    <div class="inv-slots">
+                        <span class="item" data-tip="Large models">LLMs</span>
+                        <span class="item" data-tip="Retrieval">RAG</span>
+                        <span class="item" data-tip="Framework">LangChain</span>
+                        <span class="item" data-tip="Agents">LangGraph</span>
+                        <span class="item" data-tip="Tracing">Langfuse</span>
+                        <span class="item" data-tip="Craft">Prompt Engineering</span>
+                    </div>
+                </div>
+                <div class="inv-group">
+                    <div class="inv-head"><i class="fas fa-screwdriver-wrench" aria-hidden="true"></i> Tools</div>
+                    <div class="inv-slots">
+                        <span class="item" data-tip="VCS">Git</span>
+                        <span class="item" data-tip="Hosting">GitHub</span>
+                        <span class="item" data-tip="Containers">Docker</span>
+                        <span class="item" data-tip="Env">Conda</span>
+                        <span class="item" data-tip="Testing">pytest</span>
+                        <span class="item" data-tip="SMS/voice">Twilio</span>
                     </div>
                 </div>
             </div>
         </section>
 
-        <section id="projects" class="projects-section">
-            <h2>Projects</h2>
-            <div class="projects-container">
+        <!-- ============ PROJECTS ============ -->
+        <section id="projects" class="section">
+            <div class="section-head">
+                <p class="eyebrow">// featured-builds</p>
+                <h2>Projects</h2>
+            </div>
+
+            <div class="featured-grid">
+                <a class="project-card" href="https://github.com/bmislol" target="_blank" rel="noopener noreferrer">
+                    <div class="project-top">
+                        <h3>TerraMind</h3>
+                        <span class="project-kind">Capstone</span>
+                    </div>
+                    <p>A multi-tenant AI companion for Terraria: an agentic RAG pipeline over a 22K-chunk wiki in pgvector, with tenant isolation, layered LLM guardrails, CI eval gates, and a fully Dockerized stack.</p>
+                    <div class="tag-row"><span>FastAPI</span><span>LangGraph</span><span>pgvector</span><span>Claude</span><span>Docker</span></div>
+                </a>
+
+                <a class="project-card" href="https://github.com/bmislol" target="_blank" rel="noopener noreferrer">
+                    <div class="project-top">
+                        <h3>Course Scheduler</h3>
+                        <span class="project-kind">Team of 2</span>
+                    </div>
+                    <p>An automated course scheduler built with Google OR-Tools and constraint programming — balancing instructor availability, prerequisites, and institutional rules to kill scheduling conflicts.</p>
+                    <div class="tag-row"><span>Python</span><span>OR-Tools</span><span>Constraint Prog.</span></div>
+                </a>
+
+                <a class="project-card" href="https://github.com/bmislol" target="_blank" rel="noopener noreferrer">
+                    <div class="project-top">
+                        <h3>Uptime Monitor</h3>
+                        <span class="project-kind">Full-stack</span>
+                    </div>
+                    <p>A monitoring service that runs scheduled health checks on your endpoints via a Spring Boot scheduler, logs status and response times to PostgreSQL, and shows it all on a live vanilla-JS dashboard.</p>
+                    <div class="tag-row"><span>Java</span><span>Spring Boot</span><span>PostgreSQL</span><span>JS</span></div>
+                </a>
+
+                <a class="project-card" href="https://github.com/bmislol" target="_blank" rel="noopener noreferrer">
+                    <div class="project-top">
+                        <h3>Open Source</h3>
+                        <span class="project-kind">Contributions</span>
+                    </div>
+                    <p>Giving back where I can: parameterized Pytest coverage for file-handling edge cases (pyai-extract-summarize #4), and documentation fixes to smooth developer onboarding (Open-J-Proxy #128).</p>
+                    <div class="tag-row"><span>Python</span><span>Java</span><span>Pytest</span></div>
+                </a>
+            </div>
+
+            <div class="repo-block">
+                <div class="repo-head">
+                    <p class="eyebrow">// more-on-github</p>
+                    <a class="text-link" href="https://github.com/bmislol" target="_blank" rel="noopener noreferrer">view all <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
                 </div>
+                <div class="repo-strip" id="repo-strip" aria-live="polite">
+                    <p class="repo-loading">loading repositories…</p>
+                </div>
+            </div>
         </section>
 
+        <!-- ============ QUESTS / FUTURE ============ -->
+        <section id="quests" class="section">
+            <div class="section-head">
+                <p class="eyebrow">// quest-log</p>
+                <h2>Quest Log</h2>
+                <p class="section-note">Where I'm headed next — and a couple already cleared.</p>
+            </div>
+
+            <div class="quest-cols">
+                <div class="quest-panel">
+                    <div class="quest-panel-head"><i class="fas fa-location-arrow" aria-hidden="true"></i> Active quests</div>
+
+                    <div class="quest" data-xp="60">
+                        <div class="quest-row"><span class="quest-name">Land a software dev role</span><span class="quest-pct">60%</span></div>
+                        <p class="quest-desc">Find a team to build and grow with.</p>
+                        <div class="xp"><div class="xp-fill" style="--xp:60%"></div></div>
+                    </div>
+
+                    <div class="quest" data-xp="45">
+                        <div class="quest-row"><span class="quest-name">Level up data analysis</span><span class="quest-pct">45%</span></div>
+                        <p class="quest-desc">Pandas, SQL, and telling stories with data.</p>
+                        <div class="xp"><div class="xp-fill" style="--xp:45%"></div></div>
+                    </div>
+                </div>
+
+                <div class="quest-panel">
+                    <div class="quest-panel-head"><i class="fas fa-dice-d20" aria-hidden="true"></i> Side quests</div>
+
+                    <div class="quest" data-xp="20">
+                        <div class="quest-row"><span class="quest-name">Learn pixel art</span><span class="quest-pct">20%</span></div>
+                        <p class="quest-desc">Sprites, tiles, and tiny worlds.</p>
+                        <div class="xp"><div class="xp-fill" style="--xp:20%"></div></div>
+                    </div>
+
+                    <div class="quest" data-xp="15">
+                        <div class="quest-row"><span class="quest-name">Learn game dev</span><span class="quest-pct">15%</span></div>
+                        <p class="quest-desc">Building little games in Godot.</p>
+                        <div class="xp"><div class="xp-fill" style="--xp:15%"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="achievements">
+                <div class="quest-panel-head"><i class="fas fa-trophy" aria-hidden="true"></i> Cleared</div>
+                <div class="ach-row">
+                    <span class="ach"><i class="fas fa-check" aria-hidden="true"></i> B.S. Computer Science</span>
+                    <span class="ach"><i class="fas fa-check" aria-hidden="true"></i> SE Factory — AI Engineering Bootcamp</span>
+                    <span class="ach"><i class="fas fa-check" aria-hidden="true"></i> Employee of the Month</span>
+                </div>
+            </div>
+        </section>
     </main>
 
-    <footer id="contact" class="footer-section">
-        <p>Created by Charbel Ghanem | 2025</p>
+    <!-- ============ CONTACT / FOOTER ============ -->
+    <footer id="contact" class="footer">
+        <p class="eyebrow">// say-hi</p>
+        <h2>Start a conversation</h2>
+        <p class="footer-body">Got a role, a project, or just want to talk shop? My inbox is open.</p>
+        <div class="footer-actions">
+            <a class="big-btn" href="mailto:charbelghanem219@gmail.com"><i class="fas fa-envelope" aria-hidden="true"></i> charbelghanem219@gmail.com</a>
+        </div>
+        <div class="footer-social">
+            <a class="pixel-btn" href="https://github.com/bmislol" target="_blank" rel="noopener noreferrer" aria-label="GitHub"><i class="fab fa-github" aria-hidden="true"></i></a>
+            <a class="pixel-btn" href="https://www.linkedin.com/in/ghanemch" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><i class="fab fa-linkedin-in" aria-hidden="true"></i></a>
+        </div>
+        <p class="footer-credit">Made by Charbel Ghanem · 2026 · built with HTML, CSS &amp; a lot of coffee</p>
     </footer>
 
     <script defer src="script.js"></script>
