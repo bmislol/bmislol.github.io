@@ -12,16 +12,19 @@
   if (!fine || still) return;
 
   var SIZE = 32;
-  var STEP = 100;      // ms per logical tick (drives the gait + idle/sleep clock)
-  var SPEED = 12;      // px per tick — defines the constant chase speed below
-  var NEAR = 20;       // "arrived" distance
-  var SIT_AFTER = 5;   // ticks idle → sit
-  var SLEEP_AFTER = 18;// ticks idle → sleep
-  var PXPS = SPEED / STEP * 1000;   // 120 px/s — integrated per frame with real dt
-  var GAIT = 4;                     // leg poses in the walk cycle
-  var LEGA = [0, 1, 2, 1];          // front-leg lift across the 4-frame gait
-  var LEGB = [2, 1, 0, 1];          // back-leg lift (opposite phase)
-  var TAILY = [0, -1, -2, -1];      // tail swish, in sync with the legs
+
+  // ---- feel tunables — safe to tweak without touching the logic below ----
+  var CHASE_SPEED = 720;   // px/s — top chase speed. Higher = keeps pace with faster cursor moves.
+  var STOP_DISTANCE = 6;   // px — within this the cat stops and rests (kills end-of-chase jitter).
+  var GAIT_CADENCE = 90;   // ms per leg pose at full speed; the trot slows as the cat slows.
+  var LOAF_AFTER = 2000;   // ms at rest → settle/loaf (shares the idle pose for now).
+  var SLEEP_AFTER = 5000;  // ms at rest → curl up and sleep.
+  // ------------------------------------------------------------------------
+
+  var GAIT = 4;                // leg poses in the walk cycle
+  var LEGA = [0, 1, 2, 1];     // front-leg lift across the 4-frame gait
+  var LEGB = [2, 1, 0, 1];     // back-leg lift (opposite phase)
+  var TAILY = [0, -1, -2, -1]; // tail swish, in sync with the legs
 
   var cat = document.createElement('canvas');
   cat.id = 'oneko-cat';
@@ -33,7 +36,7 @@
   var x = vw / 2, y = vh / 2;
   var tx = x, ty = y;
   var facingLeft = false;
-  var idle = 0, frame = 0, acc = 0, last = 0;
+  var frame = 0, gaitAcc = 0, restMs = 0, last = 0;
 
   window.addEventListener('mousemove', function (e) { tx = e.clientX; ty = e.clientY; }, { passive: true });
   window.addEventListener('resize', function () { vw = window.innerWidth; vh = window.innerHeight; }, { passive: true });
@@ -132,30 +135,28 @@
   function tick(now) {
     if (!last) last = now;
     var dt = now - last; last = now;
-    if (dt > 100) dt = 100;          // clamp — no lurch after a tab switch
+    if (dt > 100) dt = 100;               // clamp — a backgrounded tab won't lurch on resume
 
+    // Re-aim at the CURRENT cursor every frame, not on a slow tick.
     var dx = tx - x, dy = ty - y;
     var dist = Math.sqrt(dx * dx + dy * dy);
 
-    // the 100ms accumulator now drives ONLY the gait + idle/sleep counters
-    acc += dt;
-    var stepped = false;
-    while (acc >= STEP) {
-      acc -= STEP;
-      stepped = true;
-      if (dist < NEAR) idle++;
-    }
-
-    if (dist < NEAR) {
-      draw(idle >= SLEEP_AFTER ? 'sleep' : 'idle');
+    if (dist <= STOP_DISTANCE) {
+      // At rest: hold still and run the idle → loaf → sleep timers on real time.
+      restMs += dt;
+      var pose = restMs >= SLEEP_AFTER ? 'sleep' : restMs >= LOAF_AFTER ? 'loaf' : 'idle';
+      draw(pose);                          // 'loaf' currently falls through to the idle pose
     } else {
-      idle = 0;
-      if (Math.abs(dx) > 2) facingLeft = dx < 0;
-      // integrate position every frame with real dt → smooth, constant ~120 px/s
-      var move = Math.min(dist, PXPS * dt / 1000);
-      x += (dx / dist) * move;
-      y += (dy / dist) * move;
-      if (stepped) frame = (frame + 1) % GAIT;   // legs cycle on the 100ms clock, fps-independent
+      restMs = 0;
+      if (Math.abs(dx) > 1) facingLeft = dx < 0;   // turn instantly from the per-frame heading
+      var step = CHASE_SPEED * dt / 1000;  // framerate-corrected: 30/60/144Hz all move the same
+      if (step > dist) step = dist;        // clamp to the cursor — no overshoot / oscillation
+      x += (dx / dist) * step;
+      y += (dy / dist) * step;
+      // Advance the leg gait by distance covered, so the trot tracks real speed: fast chase →
+      // fast trot, creeping → slow trot, and the legs only ever cycle forward (no moon-walking).
+      gaitAcc += step * 1000 / CHASE_SPEED;
+      while (gaitAcc >= GAIT_CADENCE) { gaitAcc -= GAIT_CADENCE; frame = (frame + 1) % GAIT; }
       place();
       draw('run');
     }
