@@ -751,9 +751,296 @@
     };
   }
 
+  /* ---------- Module 3: Pocket Slime (a pet you keep alive between visits) ---------- */
+  function createPet() {
+    // ---- feel tunables ----
+    var HUNGER_DECAY = 3.5;                  // stat points lost per REAL hour
+    var HAPPINESS_DECAY = 2.5;
+    var ENERGY_DECAY = 2;
+    var CATCHUP_CAP_MS = 24 * 3600 * 1000;   // treat any absence > 24h as 24h (never a dead pet)
+    var FEED_GAIN = 22;                      // Feed -> +hunger
+    var PLAY_HAPPY = 20, PLAY_ENERGY_COST = 16, PLAY_MIN_ENERGY = 18;  // Play -> +happy, -energy
+    var REST_MS = 6000, REST_ENERGY = 42;    // Rest -> +energy over one short sleep
+    var COOLDOWN_MS = 3500;                  // per-action cooldown (anti-spam)
+    var LOW_HUNGER = 30, LOW_ENERGY = 25, HIGH_HAPPY = 78;  // mood thresholds
+    var SCHEMA = 1;
+
+    var PET_HTML = `
+      <div style="display:flex;gap:14px;padding:16px;min-height:268px;box-sizing:border-box;">
+        <div style="flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;width:172px;">
+          <canvas id="pet-canvas" width="160" height="160" style="width:160px;height:160px;"></canvas>
+          <div id="pet-mood" style="font-family:'Pixelify Sans';font-size:.8rem;letter-spacing:1px;color:var(--accent);text-transform:uppercase;">content</div>
+        </div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;justify-content:center;">
+          <div id="pet-note" role="status" aria-live="polite" style="font-family:'Pixelify Sans';font-size:.72rem;color:var(--fg-muted);min-height:2.2em;line-height:1.15;">&nbsp;</div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-family:'Pixelify Sans';font-size:.62rem;color:var(--fg-muted);margin-bottom:2px;"><span>hunger</span><span id="pet-hunger-val">0</span></div>
+            <div style="height:11px;border:2px solid var(--ink);border-radius:6px;background:var(--bg-inset);overflow:hidden;"><div id="pet-hunger-fill" style="height:100%;width:0;background:var(--success);transition:width .3s;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-family:'Pixelify Sans';font-size:.62rem;color:var(--fg-muted);margin-bottom:2px;"><span>happiness</span><span id="pet-happy-val">0</span></div>
+            <div style="height:11px;border:2px solid var(--ink);border-radius:6px;background:var(--bg-inset);overflow:hidden;"><div id="pet-happy-fill" style="height:100%;width:0;background:var(--success);transition:width .3s;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-family:'Pixelify Sans';font-size:.62rem;color:var(--fg-muted);margin-bottom:2px;"><span>energy</span><span id="pet-energy-val">0</span></div>
+            <div style="height:11px;border:2px solid var(--ink);border-radius:6px;background:var(--bg-inset);overflow:hidden;"><div id="pet-energy-fill" style="height:100%;width:0;background:var(--success);transition:width .3s;"></div></div>
+          </div>
+          <div style="display:flex;gap:7px;margin-top:5px;">
+            <button id="pet-feed" style="flex:1;font-family:'Pixelify Sans';font-size:.8rem;color:var(--on-accent);background:var(--accent);border:2px solid var(--ink);border-radius:9px;box-shadow:2px 2px 0 var(--shadow);padding:9px 4px;cursor:pointer;">Feed</button>
+            <button id="pet-play" style="flex:1;font-family:'Pixelify Sans';font-size:.8rem;color:var(--on-accent);background:var(--accent-2);border:2px solid var(--ink);border-radius:9px;box-shadow:2px 2px 0 var(--shadow);padding:9px 4px;cursor:pointer;">Play</button>
+            <button id="pet-rest" style="flex:1;font-family:'Pixelify Sans';font-size:.8rem;color:var(--fg-strong);background:var(--bg-1);border:2px solid var(--ink);border-radius:9px;box-shadow:2px 2px 0 var(--shadow);padding:9px 4px;cursor:pointer;">Rest</button>
+          </div>
+        </div>
+      </div>`;
+
+    var host, box, canvas, ctx, raf = null, timer = null, dpr = 1;
+    var pet = null, note = '', phase = 0, bounce = 0, uiAcc = 0;
+    var resting = false, restStart = 0, restFrom = 0, restTo = 0;
+    var cd = { feed: 0, play: 0, rest: 0 };
+    var els = {};
+
+    function $c(sel) { return box ? box.querySelector(sel) : null; }
+    function clamp(v) { return v < 0 ? 0 : v > 100 ? 100 : v; }
+    function fresh() { return { schemaVersion: SCHEMA, hunger: 85, happiness: 100, energy: 95, lastSeen: Date.now() }; }
+    function save() { Store.set('pet', pet); }
+    function sanitize(o) {
+      var n = function (v, d) { return (typeof v === 'number' && isFinite(v)) ? clamp(v) : d; };
+      return {
+        schemaVersion: SCHEMA,
+        hunger: n(o.hunger, 85), happiness: n(o.happiness, 100), energy: n(o.energy, 95),
+        lastSeen: (typeof o.lastSeen === 'number' && isFinite(o.lastSeen)) ? o.lastSeen : Date.now()
+      };
+    }
+
+    // ---- colors (theme vars only; blend two vars to shift mood tint) ----
+    function col(k) { return (host && host.theme ? (host.theme.getPropertyValue(k).trim() || '#888') : '#888'); }
+    function parseCol(s) {
+      s = (s || '').trim();
+      if (s.charAt(0) === '#') {
+        if (s.length === 4) return [parseInt(s.charAt(1) + s.charAt(1), 16), parseInt(s.charAt(2) + s.charAt(2), 16), parseInt(s.charAt(3) + s.charAt(3), 16)];
+        return [parseInt(s.substr(1, 2), 16), parseInt(s.substr(3, 2), 16), parseInt(s.substr(5, 2), 16)];
+      }
+      var m = s.match(/(\d+)[,\s]+(\d+)[,\s]+(\d+)/);
+      return m ? [+m[1], +m[2], +m[3]] : [136, 136, 136];
+    }
+    function mix(a, b, t) {
+      var A = parseCol(a), B = parseCol(b);
+      return 'rgb(' + Math.round(A[0] + (B[0] - A[0]) * t) + ',' + Math.round(A[1] + (B[1] - A[1]) * t) + ',' + Math.round(A[2] + (B[2] - A[2]) * t) + ')';
+    }
+    function bodyColor(m) {
+      var acc = col('--accent');
+      if (m === 'hungry') return mix(acc, col('--fg-muted'), 0.4);
+      if (m === 'sleepy' || m === 'sleeping') return mix(acc, col('--bg-2'), 0.45);
+      if (m === 'happy') return mix(acc, col('--accent-2'), 0.25);
+      return acc;
+    }
+
+    // ---- real-time decay + mood ----
+    function applyDecay(now) {
+      var el = now - (pet.lastSeen || now);
+      if (el < 0) el = 0;
+      if (el > CATCHUP_CAP_MS) el = CATCHUP_CAP_MS;   // cap: a long absence never zeroes the pet
+      var h = el / 3600000;
+      pet.hunger = clamp(pet.hunger - HUNGER_DECAY * h);
+      pet.happiness = clamp(pet.happiness - HAPPINESS_DECAY * h);
+      pet.energy = clamp(pet.energy - ENERGY_DECAY * h);
+      pet.lastSeen = now;
+    }
+    function mood() {
+      if (resting) return 'sleeping';
+      if (pet.energy < LOW_ENERGY) return 'sleepy';
+      if (pet.hunger < LOW_HUNGER) return 'hungry';
+      if (pet.happiness > HIGH_HAPPY && pet.energy > 40 && pet.hunger > 40) return 'happy';
+      return 'content';
+    }
+    function comeback(before, after, elapsed) {
+      if (elapsed < 5 * 60 * 1000) return 'Welcome back!';
+      if (after.hunger <= 35) return 'Slime missed you — it\'s hungry!';
+      if (after.energy <= 30) return 'Slime got sleepy waiting for you.';
+      if (after.happiness <= 45) return 'Slime felt a little lonely.';
+      return 'Slime is happy you\'re back!';
+    }
+
+    // ---- actions ----
+    function ready(k) { return Date.now() >= cd[k] && !resting; }
+    function feed() {
+      if (!ready('feed')) return;
+      applyDecay(Date.now());
+      pet.hunger = clamp(pet.hunger + FEED_GAIN);
+      cd.feed = Date.now() + COOLDOWN_MS; note = ''; bounce = reduceMotion ? 0 : 1;
+      save(); refresh();
+    }
+    function play() {
+      if (!ready('play')) return;
+      if (pet.energy < PLAY_MIN_ENERGY) { note = 'Too sleepy to play — let it Rest first.'; refresh(); return; }
+      applyDecay(Date.now());
+      pet.happiness = clamp(pet.happiness + PLAY_HAPPY);
+      pet.energy = clamp(pet.energy - PLAY_ENERGY_COST);
+      cd.play = Date.now() + COOLDOWN_MS; note = ''; bounce = reduceMotion ? 0 : 1;
+      save(); refresh();
+    }
+    function rest() {
+      if (!ready('rest')) return;
+      applyDecay(Date.now());
+      note = '';
+      var target = clamp(pet.energy + REST_ENERGY);
+      if (reduceMotion) { pet.energy = target; cd.rest = Date.now() + COOLDOWN_MS; save(); refresh(); return; }
+      resting = true; restStart = Date.now(); restFrom = pet.energy; restTo = target;
+      refresh();
+    }
+    function endRestIfDue(now) {
+      if (!resting) return;
+      var p = (now - restStart) / REST_MS;
+      if (p >= 1) { pet.energy = restTo; resting = false; cd.rest = now + COOLDOWN_MS; save(); refresh(); }
+      else { pet.energy = restFrom + (restTo - restFrom) * p; }
+    }
+
+    // ---- render ----
+    function rr(x, y, w, h, r) {
+      ctx.beginPath(); ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+    function drawFace(m, cx, ey) {
+      var ink = col('--ink');
+      ctx.fillStyle = ink; ctx.strokeStyle = ink; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+      var ex = 20;
+      if (m === 'sleeping' || m === 'sleepy') {
+        ctx.beginPath(); ctx.arc(cx - ex, ey, 6, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx + ex, ey, 6, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+      } else if (m === 'happy') {
+        ctx.beginPath(); ctx.moveTo(cx - ex - 6, ey + 2); ctx.lineTo(cx - ex, ey - 5); ctx.lineTo(cx - ex + 6, ey + 2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx + ex - 6, ey + 2); ctx.lineTo(cx + ex, ey - 5); ctx.lineTo(cx + ex + 6, ey + 2); ctx.stroke();
+      } else {
+        ctx.fillRect(cx - ex - 3, ey - 5, 6, 11);
+        ctx.fillRect(cx + ex - 3, ey - 5, 6, 11);
+      }
+      var my = ey + 20;
+      ctx.beginPath();
+      if (m === 'happy') { ctx.arc(cx, my - 4, 12, 0.08 * Math.PI, 0.92 * Math.PI); ctx.stroke(); }
+      else if (m === 'content') { ctx.arc(cx, my - 2, 8, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke(); }
+      else if (m === 'hungry') { ctx.arc(cx, my + 9, 8, 1.15 * Math.PI, 1.85 * Math.PI); ctx.stroke(); }
+      else if (m === 'sleepy') { ctx.moveTo(cx - 5, my); ctx.lineTo(cx + 5, my); ctx.stroke(); }
+      else if (m === 'sleeping') { ctx.arc(cx, my - 1, 5, 0, Math.PI * 2); ctx.stroke(); }
+    }
+    function drawPet() {
+      if (!ctx) return;
+      var m = mood(), W = 160, cx = 80;
+      ctx.clearRect(0, 0, W, W);
+      var breathe = reduceMotion ? 0 : Math.sin(phase) * 3;
+      var hop = (bounce > 0 && !reduceMotion) ? Math.sin((1 - bounce) * Math.PI) * 22 : 0;
+      var happyBob = (m === 'happy' && !reduceMotion) ? Math.abs(Math.sin(phase * 1.4)) * 7 : 0;
+      var slump = (m === 'sleepy' || m === 'sleeping' || m === 'hungry') ? 8 : 0;
+      var w = 104 + breathe + (slump ? 10 : 0);
+      var h = 96 - breathe - slump;
+      var base = 128 - hop - happyBob;
+      ctx.fillStyle = 'rgba(0,0,0,.14)';
+      ctx.beginPath(); ctx.ellipse(cx, 134, w * 0.5, 7, 0, 0, 6.3); ctx.fill();
+      ctx.lineWidth = 3; ctx.strokeStyle = col('--ink'); ctx.fillStyle = bodyColor(m);
+      rr(cx - w / 2, base - h, w, h, Math.min(30, h / 2)); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.18)';
+      rr(cx - w / 2 + 14, base - h + 10, w - 28, 12, 6); ctx.fill();
+      drawFace(m, cx, base - h * 0.58);
+      if (m === 'sleeping') {
+        ctx.fillStyle = col('--fg-muted');
+        ctx.font = "12px 'Pixelify Sans', monospace"; ctx.fillText('z', cx + w / 2 - 6, base - h + 2);
+        ctx.font = "9px 'Pixelify Sans', monospace"; ctx.fillText('z', cx + w / 2 + 3, base - h - 8);
+      }
+    }
+
+    // ---- UI ----
+    function cacheEls() {
+      els.mood = $c('#pet-mood'); els.note = $c('#pet-note');
+      els.hf = $c('#pet-hunger-fill'); els.hv = $c('#pet-hunger-val');
+      els.pf = $c('#pet-happy-fill'); els.pv = $c('#pet-happy-val');
+      els.ef = $c('#pet-energy-fill'); els.ev = $c('#pet-energy-val');
+      els.feed = $c('#pet-feed'); els.play = $c('#pet-play'); els.rest = $c('#pet-rest');
+    }
+    function barColor(v) { return v >= 50 ? 'var(--success)' : v >= 25 ? 'var(--warn)' : 'var(--danger)'; }
+    function setBar(fill, val, v) { v = Math.round(v); if (fill) { fill.style.width = v + '%'; fill.style.background = barColor(v); } if (val) val.textContent = v; }
+    // aria-disabled (not the `disabled` property) so cooldown never yanks keyboard focus out of the
+    // modal; the action handlers already no-op via ready()/energy checks.
+    function setBtn(btn, on) { if (!btn) return; btn.setAttribute('aria-disabled', on ? 'false' : 'true'); btn.style.opacity = on ? '1' : '.45'; btn.style.cursor = on ? 'pointer' : 'not-allowed'; }
+    function refresh() {
+      if (!pet) return;
+      var m = mood(), now = Date.now();
+      setBar(els.hf, els.hv, pet.hunger);
+      setBar(els.pf, els.pv, pet.happiness);
+      setBar(els.ef, els.ev, pet.energy);
+      if (els.mood) {
+        els.mood.textContent = m === 'happy' ? 'happy!' : m;
+        els.mood.style.color = m === 'hungry' ? 'var(--warn)' : (m === 'sleepy' || m === 'sleeping') ? 'var(--fg-muted)' : 'var(--accent)';
+      }
+      if (els.note) els.note.textContent = note || ' ';
+      setBtn(els.feed, now >= cd.feed && !resting);
+      setBtn(els.play, now >= cd.play && !resting && pet.energy >= PLAY_MIN_ENERGY);
+      setBtn(els.rest, now >= cd.rest && !resting);
+    }
+
+    function tick() {
+      var now = Date.now();
+      if (!reduceMotion) phase += 0.06;
+      if (bounce > 0) bounce = Math.max(0, bounce - 0.05);
+      endRestIfDue(now);
+      drawPet();
+      if (++uiAcc >= 12) { uiAcc = 0; refresh(); }   // ~5Hz UI refresh (cooldowns, rest energy)
+      raf = requestAnimationFrame(tick);
+    }
+    function heartbeat() {
+      // setInterval keeps firing when the tab is backgrounded (rAF pauses), so settle an in-progress
+      // rest here too — otherwise a Rest started before tabbing away could stay stuck.
+      var now = Date.now();
+      if (resting) endRestIfDue(now); else applyDecay(now);
+      save(); refresh();
+    }
+
+    function mount(container, hostApi) {
+      host = hostApi; box = container;
+      var loaded = Store.get('pet', null);
+      var firstVisit = !loaded || typeof loaded !== 'object';
+      pet = firstVisit ? fresh() : sanitize(loaded);
+      var before = { hunger: pet.hunger, happiness: pet.happiness, energy: pet.energy };
+      var now = Date.now();
+      var elapsed = now - (pet.lastSeen || now);
+      applyDecay(now);   // come-back catch-up (capped at 24h inside)
+      note = firstVisit ? 'A new slime! Feed and play to keep it happy.' : comeback(before, pet, elapsed);
+      resting = false; bounce = 0; phase = 0; uiAcc = 0; cd = { feed: 0, play: 0, rest: 0 };
+      container.innerHTML = PET_HTML;
+      canvas = $c('#pet-canvas'); ctx = canvas.getContext('2d');
+      dpr = Math.min(2, window.devicePixelRatio || 1);
+      canvas.width = 160 * dpr; canvas.height = 160 * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      cacheEls();
+      els.feed.addEventListener('click', feed);
+      els.play.addEventListener('click', play);
+      els.rest.addEventListener('click', rest);
+      save(); refresh();
+      raf = requestAnimationFrame(tick);
+      timer = setInterval(heartbeat, 3000);
+    }
+    function destroy() {
+      if (raf) cancelAnimationFrame(raf); raf = null;
+      if (timer) clearInterval(timer); timer = null;
+      if (pet) { resting = false; applyDecay(Date.now()); save(); }   // persist lastSeen on the way out
+    }
+    function reset() {
+      pet = fresh(); resting = false; bounce = 0; note = 'Fresh slime!'; cd = { feed: 0, play: 0, rest: 0 };
+      save(); refresh();
+    }
+    function onKey() { return false; }
+
+    return {
+      id: 'pet', title: '▸ POCKET SLIME',
+      hint: 'feed · play · rest — keep your slime alive · ◀ ▶ switch · esc to close',
+      showScore: false, mount: mount, destroy: destroy, onKey: onKey, reset: reset
+    };
+  }
+
   /* ---------- Carousel host: swaps modules in the one window ---------- */
   var GameHost = (function () {
-    var Games = [createRunner(), createClicker()];
+    var Games = [createRunner(), createClicker(), createPet()];
     var idx = 0, active = null;
     var modal, slot, panel, titleEl, hintEl, scoreWrap, bestWrap, scoreEl, bestEl, opener = null;
 
@@ -799,12 +1086,13 @@
     function isOpen() { return !!(modal && !modal.hidden); }
     function handleKey(e) {
       if (e.code === 'Escape') { e.preventDefault(); close(); return; }
-      // Let a focused control handle its own keys: typing in the name field, and
-      // Space/Enter activating a button (◀ ▶ reset close start again) or the slider.
-      // During play focus sits on <body> (the idle overlay is display:none), so Space still hops.
       var t = e.target, tag = (t && t.tagName ? t.tagName : '').toUpperCase();
       var role = (t && t.getAttribute) ? t.getAttribute('role') : null;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON' || role === 'slider' || (t && t.isContentEditable)) return;
+      // Never hijack typing in a field.
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
+      // Let a focused button/slider/role=button handle its OWN activation keys (Space/Enter);
+      // arrows still fall through so ◀ ▶ switching works no matter what's focused.
+      if ((tag === 'BUTTON' || role === 'slider' || role === 'button') && (e.code === 'Space' || e.code === 'Enter')) return;
       if (active && active.onKey && active.onKey(e)) return;
       if (e.code === 'ArrowLeft') { e.preventDefault(); switchTo(idx - 1); }
       else if (e.code === 'ArrowRight') { e.preventDefault(); switchTo(idx + 1); }
