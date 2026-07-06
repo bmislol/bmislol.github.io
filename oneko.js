@@ -12,11 +12,16 @@
   if (!fine || still) return;
 
   var SIZE = 32;
-  var STEP = 100;      // ms per logical tick (classic oneko cadence)
-  var SPEED = 12;      // px moved toward the cursor per tick
+  var STEP = 100;      // ms per logical tick (drives the gait + idle/sleep clock)
+  var SPEED = 12;      // px per tick — defines the constant chase speed below
   var NEAR = 20;       // "arrived" distance
   var SIT_AFTER = 5;   // ticks idle → sit
   var SLEEP_AFTER = 18;// ticks idle → sleep
+  var PXPS = SPEED / STEP * 1000;   // 120 px/s — integrated per frame with real dt
+  var GAIT = 4;                     // leg poses in the walk cycle
+  var LEGA = [0, 1, 2, 1];          // front-leg lift across the 4-frame gait
+  var LEGB = [2, 1, 0, 1];          // back-leg lift (opposite phase)
+  var TAILY = [0, -1, -2, -1];      // tail swish, in sync with the legs
 
   var cat = document.createElement('canvas');
   cat.id = 'oneko-cat';
@@ -83,20 +88,20 @@
     }
 
     var run = state === 'run';
-    // tail
+    // tail — swishes through the 4-frame gait
     ctx.strokeStyle = c.line;
+    var tailUp = run ? TAILY[frame] : 0;
     ctx.beginPath();
     ctx.moveTo(6, 20);
-    if (run && frame === 1) ctx.quadraticCurveTo(1, 15, 3, 11);
-    else ctx.quadraticCurveTo(1, 17, 3, 13);
+    ctx.quadraticCurveTo(1, 17 + tailUp, 3, 13 + tailUp);
     ctx.stroke();
 
     // legs
     ctx.fillStyle = c.body;
     var legY = 24;
     if (run) {
-      // trot: alternate front/back leg lift
-      var a = frame === 0 ? 0 : 2, b = frame === 0 ? 2 : 0;
+      // trot: 4-frame cycle, front and back legs in opposite phase
+      var a = LEGA[frame], b = LEGB[frame];
       rr(11, legY - a, 3, 4 + a, 1.4); ctx.fill(); ctx.stroke();
       rr(19, legY - b, 3, 4 + b, 1.4); ctx.fill(); ctx.stroke();
     } else {
@@ -126,26 +131,33 @@
 
   function tick(now) {
     if (!last) last = now;
-    acc += now - last; last = now;
+    var dt = now - last; last = now;
+    if (dt > 100) dt = 100;          // clamp — no lurch after a tab switch
 
+    var dx = tx - x, dy = ty - y;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+
+    // the 100ms accumulator now drives ONLY the gait + idle/sleep counters
+    acc += dt;
+    var stepped = false;
     while (acc >= STEP) {
       acc -= STEP;
-      var dx = tx - x, dy = ty - y;
-      var dist = Math.sqrt(dx * dx + dy * dy);
+      stepped = true;
+      if (dist < NEAR) idle++;
+    }
 
-      if (dist < NEAR) {
-        idle++;
-        draw(idle >= SLEEP_AFTER ? 'sleep' : 'idle');
-      } else {
-        idle = 0;
-        if (Math.abs(dx) > 2) facingLeft = dx < 0;
-        var s = Math.min(SPEED, dist);
-        x += (dx / dist) * s;
-        y += (dy / dist) * s;
-        frame ^= 1;
-        place();
-        draw('run');
-      }
+    if (dist < NEAR) {
+      draw(idle >= SLEEP_AFTER ? 'sleep' : 'idle');
+    } else {
+      idle = 0;
+      if (Math.abs(dx) > 2) facingLeft = dx < 0;
+      // integrate position every frame with real dt → smooth, constant ~120 px/s
+      var move = Math.min(dist, PXPS * dt / 1000);
+      x += (dx / dist) * move;
+      y += (dy / dist) * move;
+      if (stepped) frame = (frame + 1) % GAIT;   // legs cycle on the 100ms clock, fps-independent
+      place();
+      draw('run');
     }
     requestAnimationFrame(tick);
   }
