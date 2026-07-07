@@ -765,6 +765,17 @@
     var LOW_HUNGER = 30, LOW_ENERGY = 25, HIGH_HAPPY = 78;  // mood thresholds
     var SCHEMA = 1;
 
+    // ---- Part B: autonomy + personality tunables ----
+    var WALK_SPEED = 34;         // px/sec the slime strolls across the floor
+    var IDLE_MIN_MS = 1600, IDLE_MAX_MS = 4400;   // pause between wanders
+    var HOP_CHANCE = 0.011;      // per-frame chance of a little idle hop
+    var NAP_ENTER = 22, NAP_WAKE = 55;            // energy: shuffle to the bed / wake up
+    var NAP_REGEN = 720;         // energy points/hour recovered while napping on the bed
+    var HUNGRY_SEEK = 28;        // hunger below this -> drift to the bowl
+    var ARRIVE = 8;              // px "close enough" to a target
+    var PET_HAPPY = 3, PET_CD = 1100;             // click-to-pet happiness + cooldown
+    var CARE_GOO = 3;            // goo granted per Feed/Play/Rest into the shared clicker balance
+
     var PET_HTML = `
       <div style="display:flex;flex-direction:column;">
         <canvas id="pet-scene" style="display:block;width:100%;height:188px;"></canvas>
@@ -799,8 +810,14 @@
     var sceneW = 0, sceneH = 0, floorY = 0;   // habitat dimensions (measured, responsive)
     var pet = null, note = '', phase = 0, bounce = 0, uiAcc = 0;
     var resting = false, restStart = 0, restFrom = 0, restTo = 0;
-    var cd = { feed: 0, play: 0, rest: 0 };
+    var cd = { feed: 0, play: 0, rest: 0, pet: 0 };
     var els = {};
+    // ---- Part B runtime state (all frame-driven — no extra rAF/timer) ----
+    var behavior = 'idle';       // 'idle' | 'walk' | 'sleep'
+    var slimeX = 0, targetX = 0, facing = 1, reason = 'wander', slimeTopY = 0, slimeDrawX = 0;
+    var idleUntil = 0, lastNow = 0, hopT = 0;
+    var bubbleText = '', bubbleUntil = 0;
+    var curX = -1, curY = -1;    // cursor in scene coords, -1 when outside
 
     function $c(sel) { return box ? box.querySelector(sel) : null; }
     function clamp(v) { return v < 0 ? 0 : v > 100 ? 100 : v; }
@@ -846,11 +863,11 @@
       var h = el / 3600000;
       pet.hunger = clamp(pet.hunger - HUNGER_DECAY * h);
       pet.happiness = clamp(pet.happiness - HAPPINESS_DECAY * h);
-      pet.energy = clamp(pet.energy - ENERGY_DECAY * h);
+      pet.energy = clamp(pet.energy + (behavior === 'sleep' ? NAP_REGEN : -ENERGY_DECAY) * h);   // regen while napping
       pet.lastSeen = now;
     }
     function mood() {
-      if (resting) return 'sleeping';
+      if (resting || behavior === 'sleep') return 'sleeping';
       if (pet.energy < LOW_ENERGY) return 'sleepy';
       if (pet.hunger < LOW_HUNGER) return 'hungry';
       if (pet.happiness > HIGH_HAPPY && pet.energy > 40 && pet.hunger > 40) return 'happy';
@@ -871,6 +888,7 @@
       applyDecay(Date.now());
       pet.hunger = clamp(pet.hunger + FEED_GAIN);
       cd.feed = Date.now() + COOLDOWN_MS; note = ''; bounce = reduceMotion ? 0 : 1;
+      say('yum!', 1400); earnGoo(CARE_GOO);
       save(); refresh();
     }
     function play() {
@@ -880,6 +898,7 @@
       pet.happiness = clamp(pet.happiness + PLAY_HAPPY);
       pet.energy = clamp(pet.energy - PLAY_ENERGY_COST);
       cd.play = Date.now() + COOLDOWN_MS; note = ''; bounce = reduceMotion ? 0 : 1;
+      say('yay!', 1400); earnGoo(CARE_GOO);
       save(); refresh();
     }
     function rest() {
@@ -887,6 +906,7 @@
       applyDecay(Date.now());
       note = '';
       var target = clamp(pet.energy + REST_ENERGY);
+      earnGoo(CARE_GOO);
       if (reduceMotion) { pet.energy = target; cd.rest = Date.now() + COOLDOWN_MS; save(); refresh(); return; }
       resting = true; restStart = Date.now(); restFrom = pet.energy; restTo = target;
       refresh();
@@ -898,6 +918,83 @@
       else { pet.energy = restFrom + (restTo - restFrom) * p; }
     }
 
+    // ---- Part B: shared currency + autonomy + personality ----
+    function earnGoo(n) {
+      // grant into the clicker's balance — the one shared currency (Store isolates the seam)
+      var g = Store.get('goo-farm', null);
+      if (!g || typeof g !== 'object') g = { goo: 0, click: 1, auto: 0, mult: 1, lv: { poke: 0, spawn: 0, mult: 0 } };
+      g.goo = (typeof g.goo === 'number' && isFinite(g.goo) ? g.goo : 0) + n;
+      Store.set('goo-farm', g);
+    }
+    function say(text, ms) { if (reduceMotion) return; bubbleText = text; bubbleUntil = Date.now() + ms; }
+    function rnd(a, b) { return a + Math.random() * (b - a); }
+    function bowlX() { return Math.round(sceneW * 0.24); }
+    function bedX() { return Math.round(sceneW * 0.82); }
+    function clampX(x) { return Math.max(sceneW * 0.12, Math.min(sceneW * 0.88, x)); }
+    function chatter(now) {
+      var m = mood(), pool = m === 'happy' ? ['♪', 'yay!', '☺'] : m === 'content' ? ['♪', 'hi!', 'hmm'] : null;
+      if (pool) say(pool[Math.floor(Math.random() * pool.length)], 1500);
+      idleUntil = now + rnd(IDLE_MIN_MS, IDLE_MAX_MS);
+    }
+    // a tiny state machine: tired -> bed, hungry -> bowl, else follow the cursor or wander
+    function updateBehavior(now, dt) {
+      if (!slimeX) slimeX = sceneW * 0.5;
+      if (reduceMotion) {
+        // same nap hysteresis as the animated path (enter at NAP_ENTER, wake at NAP_WAKE),
+        // so a reduced-motion pet self-recovers instead of pinning at the sleep threshold.
+        if (behavior === 'sleep') { if (pet.energy > NAP_WAKE) behavior = 'idle'; }
+        else if (pet.energy < NAP_ENTER) behavior = 'sleep';
+        slimeX = sceneW * 0.5; return;
+      }
+
+      if (pet.energy < NAP_ENTER && behavior !== 'sleep') { reason = 'bed'; targetX = bedX(); behavior = 'walk'; }
+      else if (behavior === 'sleep') {
+        if (pet.energy > NAP_WAKE) { behavior = 'idle'; idleUntil = now + rnd(IDLE_MIN_MS, IDLE_MAX_MS); say('♪', 1200); }
+      } else if (pet.hunger < HUNGRY_SEEK && Math.abs(slimeX - bowlX()) > ARRIVE) {
+        reason = 'bowl'; targetX = bowlX(); behavior = 'walk';
+      } else if (curX >= 0) {
+        reason = 'cursor'; targetX = clampX(curX);
+        behavior = Math.abs(slimeX - targetX) > ARRIVE * 2 ? 'walk' : 'idle';
+      } else if (behavior === 'idle' && now >= idleUntil) {
+        reason = 'wander'; targetX = clampX(rnd(sceneW * 0.16, sceneW * 0.84)); behavior = 'walk';
+      }
+
+      if (behavior === 'walk') {
+        var dx = targetX - slimeX;
+        if (Math.abs(dx) <= ARRIVE) {
+          slimeX = targetX;
+          if (reason === 'bed') { behavior = 'sleep'; bubbleText = ''; bubbleUntil = 0; }
+          else if (reason === 'bowl') { behavior = 'idle'; idleUntil = now + 2200; if (pet.hunger < HUNGRY_SEEK) say('feed me?', 2400); }
+          else { behavior = 'idle'; idleUntil = now + (reason === 'cursor' ? 900 : rnd(IDLE_MIN_MS, IDLE_MAX_MS)); }
+        } else {
+          facing = dx < 0 ? -1 : 1;
+          slimeX += (dx < 0 ? -1 : 1) * Math.min(Math.abs(dx), WALK_SPEED * dt / 1000);
+          if (hopT <= 0 && Math.random() < 0.05) hopT = 1;       // little hops while strolling
+        }
+      } else if (behavior === 'idle') {
+        if (curX >= 0) facing = curX < slimeX ? -1 : 1;          // face the cursor
+        if (hopT <= 0 && Math.random() < HOP_CHANCE) hopT = 1;   // occasional idle hop
+        if (now >= idleUntil && Math.random() < 0.02) chatter(now);
+      }
+      if (hopT > 0) hopT = Math.max(0, hopT - dt / 380);         // ~380ms hop arc
+    }
+    function petAt(x, y) {
+      if (Date.now() < cd.pet) return;
+      var dx = x - slimeX, dy = y - (floorY - 40);
+      if (dx * dx + dy * dy > 62 * 62) return;                   // only if the click landed on the slime
+      cd.pet = Date.now() + PET_CD;
+      if (behavior !== 'sleep') { pet.happiness = clamp(pet.happiness + PET_HAPPY); save(); refresh(); }
+      if (!reduceMotion) { bounce = 1; say('♥', 1100); }
+    }
+    function onPointer(e) {
+      if (!sceneW || !canvas) return;
+      var r = canvas.getBoundingClientRect(); if (!r.width) return;
+      curX = (e.clientX - r.left) * (sceneW / r.width);
+      curY = (e.clientY - r.top) * (sceneH / r.height);
+    }
+    function onLeave() { curX = -1; curY = -1; }
+    function onDown(e) { onPointer(e); if (curX >= 0) petAt(curX, curY); }
+
     // ---- render ----
     function rr(x, y, w, h, r) {
       ctx.beginPath(); ctx.moveTo(x + r, y);
@@ -908,18 +1005,18 @@
       ctx.closePath();
     }
     function drawFace(m, cx, ey) {
-      var ink = col('--ink');
+      var ink = col('--ink'), dx = (m === 'sleeping' ? 0 : facing * 2);   // eyes look where it's headed
       ctx.fillStyle = ink; ctx.strokeStyle = ink; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
       var ex = 20;
       if (m === 'sleeping' || m === 'sleepy') {
-        ctx.beginPath(); ctx.arc(cx - ex, ey, 6, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
-        ctx.beginPath(); ctx.arc(cx + ex, ey, 6, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx - ex + dx, ey, 6, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx + ex + dx, ey, 6, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
       } else if (m === 'happy') {
-        ctx.beginPath(); ctx.moveTo(cx - ex - 6, ey + 2); ctx.lineTo(cx - ex, ey - 5); ctx.lineTo(cx - ex + 6, ey + 2); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(cx + ex - 6, ey + 2); ctx.lineTo(cx + ex, ey - 5); ctx.lineTo(cx + ex + 6, ey + 2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx - ex - 6 + dx, ey + 2); ctx.lineTo(cx - ex + dx, ey - 5); ctx.lineTo(cx - ex + 6 + dx, ey + 2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx + ex - 6 + dx, ey + 2); ctx.lineTo(cx + ex + dx, ey - 5); ctx.lineTo(cx + ex + 6 + dx, ey + 2); ctx.stroke();
       } else {
-        ctx.fillRect(cx - ex - 3, ey - 5, 6, 11);
-        ctx.fillRect(cx + ex - 3, ey - 5, 6, 11);
+        ctx.fillRect(cx - ex - 3 + dx, ey - 5, 6, 11);
+        ctx.fillRect(cx + ex - 3 + dx, ey - 5, 6, 11);
       }
       var my = ey + 20;
       ctx.beginPath();
@@ -987,15 +1084,23 @@
       drawBed(Math.round(sceneW * 0.82));
     }
     function drawPet() {
-      var m = mood(), cx = Math.round(sceneW * 0.5);
+      var m = mood(), sx = slimeX || sceneW * 0.5;
+      var onBed = behavior === 'sleep' && Math.abs(sx - sceneW * 0.82) < 34;   // "on the bed" only when actually there
       var breathe = reduceMotion ? 0 : Math.sin(phase) * 3;
-      var hop = (bounce > 0 && !reduceMotion) ? Math.sin((1 - bounce) * Math.PI) * 20 : 0;
-      var happyBob = (m === 'happy' && !reduceMotion) ? Math.abs(Math.sin(phase * 1.4)) * 6 : 0;
-      var slump = (m === 'sleepy' || m === 'sleeping' || m === 'hungry') ? 7 : 0;
-      var w = 96 + breathe + (slump ? 10 : 0);
-      var h = 86 - breathe - slump;
-      var base = floorY + 7 - hop - happyBob;                            // bottom rests on the floor
-      ctx.fillStyle = 'rgba(0,0,0,.16)'; ctx.beginPath(); ctx.ellipse(cx, floorY + 8, w * 0.5, 6, 0, 0, 6.3); ctx.fill();
+      var hopArc = (hopT > 0 && !reduceMotion) ? Math.sin(hopT * Math.PI) : 0;
+      var playArc = (bounce > 0 && !reduceMotion) ? Math.sin((1 - bounce) * Math.PI) : 0;
+      var stretch = Math.max(hopArc, playArc);                           // squash-stretch: tall in the air
+      var air = hopArc * 15 + playArc * 20;
+      var happyBob = (m === 'happy' && !reduceMotion) ? Math.abs(Math.sin(phase * 1.4)) * 5 : 0;
+      var slump = (m === 'sleepy' || onBed || m === 'hungry') ? 7 : 0;
+      var w = (onBed ? 110 : 96) - stretch * 11 + breathe + (slump ? 10 : 0);
+      var h = (onBed ? 66 : 86) + stretch * 15 - breathe - slump;
+      var cx = Math.round(Math.max(w / 2, Math.min(sceneW - w / 2, sx)));      // keep the whole body on-canvas
+      slimeDrawX = cx;
+      var groundY = onBed ? floorY - 9 : floorY + 7;                     // nap on the bed cushion
+      var base = groundY - air - happyBob;
+      slimeTopY = base - h;
+      ctx.fillStyle = 'rgba(0,0,0,.16)'; ctx.beginPath(); ctx.ellipse(cx, floorY + 8, w * (onBed ? 0.42 : 0.5), 6, 0, 0, 6.3); ctx.fill();
       ctx.lineWidth = 3; ctx.strokeStyle = col('--ink'); ctx.fillStyle = bodyColor(m);
       rr(cx - w / 2, base - h, w, h, Math.min(28, h / 2)); ctx.fill(); ctx.stroke();
       ctx.fillStyle = 'rgba(255,255,255,.18)'; rr(cx - w / 2 + 13, base - h + 9, w - 26, 11, 6); ctx.fill();
@@ -1006,11 +1111,28 @@
         ctx.font = "9px 'Pixelify Sans', monospace"; ctx.fillText('z', cx + w / 2 + 5, base - h - 8);
       }
     }
+    function drawBubble() {
+      if (!bubbleText) return;
+      var cx = Math.round(slimeDrawX || slimeX), bw = bubbleText.length * 6.8 + 16, bh = 20;
+      var bx = cx - bw / 2, by = slimeTopY - bh - 8;
+      if (bx < 3) bx = 3; if (bx + bw > sceneW - 3) bx = sceneW - 3 - bw;
+      if (by < 2) by = 2;
+      var tx = Math.max(bx + 8, Math.min(bx + bw - 8, cx));
+      ctx.fillStyle = col('--bg-1'); ctx.strokeStyle = col('--ink'); ctx.lineWidth = 2;
+      rr(bx, by, bw, bh, 7); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(tx - 5, by + bh - 1); ctx.lineTo(tx, by + bh + 6); ctx.lineTo(tx + 5, by + bh - 1); ctx.closePath();
+      ctx.fillStyle = col('--bg-1'); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(tx - 5, by + bh - 1); ctx.lineTo(tx, by + bh + 6); ctx.lineTo(tx + 5, by + bh - 1); ctx.strokeStyle = col('--ink'); ctx.stroke();
+      ctx.fillStyle = col('--fg-strong'); ctx.font = "11px 'Pixelify Sans', monospace";
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(bubbleText, bx + bw / 2, by + bh / 2);
+      ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    }
     function render() {
       if (!sceneW) sizeScene();
       if (!sceneW || !ctx) return;
       drawScene();
       drawPet();
+      drawBubble();
     }
 
     // ---- UI ----
@@ -1044,9 +1166,12 @@
 
     function tick() {
       var now = Date.now();
+      var dt = lastNow ? Math.min(120, now - lastNow) : 16; lastNow = now;
       if (!reduceMotion) phase += 0.06;
       if (bounce > 0) bounce = Math.max(0, bounce - 0.05);
+      if (bubbleUntil && now > bubbleUntil) { bubbleText = ''; bubbleUntil = 0; }
       endRestIfDue(now);
+      if (sceneW) updateBehavior(now, dt);
       render();
       if (++uiAcc >= 12) { uiAcc = 0; refresh(); }   // ~5Hz UI refresh (cooldowns, rest energy)
       raf = requestAnimationFrame(tick);
@@ -1062,23 +1187,30 @@
 
     function mount(container, hostApi) {
       host = hostApi; box = container;
+      behavior = 'idle'; resting = false; curX = -1; curY = -1; bubbleText = ''; bubbleUntil = 0;
+      slimeX = 0; hopT = 0; bounce = 0; phase = 0; uiAcc = 0; lastNow = 0;
+      cd = { feed: 0, play: 0, rest: 0, pet: 0 };
       var loaded = Store.get('pet', null);
       var firstVisit = !loaded || typeof loaded !== 'object';
       pet = firstVisit ? fresh() : sanitize(loaded);
       var before = { hunger: pet.hunger, happiness: pet.happiness, energy: pet.energy };
       var now = Date.now();
       var elapsed = now - (pet.lastSeen || now);
-      applyDecay(now);   // come-back catch-up (capped at 24h inside)
+      applyDecay(now);   // come-back catch-up (behavior='idle' -> energy decays, capped at 24h)
       note = firstVisit ? 'A new slime! Feed and play to keep it happy.' : comeback(before, pet, elapsed);
-      resting = false; bounce = 0; phase = 0; uiAcc = 0; cd = { feed: 0, play: 0, rest: 0 };
+      idleUntil = now + rnd(600, 1600);
       container.innerHTML = PET_HTML;
       canvas = $c('#pet-scene'); ctx = canvas.getContext('2d');
       dpr = Math.min(2, window.devicePixelRatio || 1);
       sceneW = 0; sceneH = 0; floorY = 0; sizeScene();
+      slimeX = sceneW ? sceneW * 0.5 : 0;
       cacheEls();
       els.feed.addEventListener('click', feed);
       els.play.addEventListener('click', play);
       els.rest.addEventListener('click', rest);
+      canvas.addEventListener('pointermove', onPointer);
+      canvas.addEventListener('pointerleave', onLeave);
+      canvas.addEventListener('pointerdown', onDown);
       save(); refresh();
       raf = requestAnimationFrame(tick);
       timer = setInterval(heartbeat, 3000);
@@ -1086,10 +1218,13 @@
     function destroy() {
       if (raf) cancelAnimationFrame(raf); raf = null;
       if (timer) clearInterval(timer); timer = null;
-      if (pet) { resting = false; applyDecay(Date.now()); save(); }   // persist lastSeen on the way out
+      if (pet) { resting = false; behavior = 'idle'; applyDecay(Date.now()); save(); }   // persist lastSeen (as decay, mirroring mount)
     }
     function reset() {
-      pet = fresh(); resting = false; bounce = 0; note = 'Fresh slime!'; cd = { feed: 0, play: 0, rest: 0 };
+      pet = fresh(); resting = false; behavior = 'idle'; bounce = 0; hopT = 0;
+      bubbleText = ''; bubbleUntil = 0; note = 'Fresh slime!';
+      cd = { feed: 0, play: 0, rest: 0, pet: 0 };
+      slimeX = sceneW ? sceneW * 0.5 : 0; idleUntil = Date.now() + 800;
       save(); refresh();
     }
     function onKey() { return false; }
