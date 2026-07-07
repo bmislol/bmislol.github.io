@@ -766,26 +766,28 @@
     var SCHEMA = 1;
 
     var PET_HTML = `
-      <div style="display:flex;gap:14px;padding:16px;min-height:268px;box-sizing:border-box;">
-        <div style="flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;width:172px;">
-          <canvas id="pet-canvas" width="160" height="160" style="width:160px;height:160px;"></canvas>
-          <div id="pet-mood" style="font-family:'Pixelify Sans';font-size:.8rem;letter-spacing:1px;color:var(--accent);text-transform:uppercase;">content</div>
-        </div>
-        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;justify-content:center;">
-          <div id="pet-note" role="status" aria-live="polite" style="font-family:'Pixelify Sans';font-size:.72rem;color:var(--fg-muted);min-height:2.2em;line-height:1.15;">&nbsp;</div>
-          <div>
-            <div style="display:flex;justify-content:space-between;font-family:'Pixelify Sans';font-size:.62rem;color:var(--fg-muted);margin-bottom:2px;"><span>hunger</span><span id="pet-hunger-val">0</span></div>
-            <div style="height:11px;border:2px solid var(--ink);border-radius:6px;background:var(--bg-inset);overflow:hidden;"><div id="pet-hunger-fill" style="height:100%;width:0;background:var(--success);transition:width .3s;"></div></div>
+      <div style="display:flex;flex-direction:column;">
+        <canvas id="pet-scene" style="display:block;width:100%;height:188px;"></canvas>
+        <div style="padding:11px 13px 13px;display:flex;flex-direction:column;gap:9px;background:var(--bg-1);border-top:2px solid var(--ink);">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;min-height:1.2em;">
+            <div id="pet-mood" style="flex:0 0 auto;font-family:'Pixelify Sans';font-size:.78rem;letter-spacing:1px;color:var(--accent);text-transform:uppercase;">content</div>
+            <div id="pet-note" role="status" aria-live="polite" style="flex:1;min-width:0;font-family:'Pixelify Sans';font-size:.7rem;color:var(--fg-muted);text-align:right;line-height:1.2;">&nbsp;</div>
           </div>
-          <div>
-            <div style="display:flex;justify-content:space-between;font-family:'Pixelify Sans';font-size:.62rem;color:var(--fg-muted);margin-bottom:2px;"><span>happiness</span><span id="pet-happy-val">0</span></div>
-            <div style="height:11px;border:2px solid var(--ink);border-radius:6px;background:var(--bg-inset);overflow:hidden;"><div id="pet-happy-fill" style="height:100%;width:0;background:var(--success);transition:width .3s;"></div></div>
+          <div style="display:flex;gap:10px;">
+            <div style="flex:1;">
+              <div style="display:flex;justify-content:space-between;font-family:'Pixelify Sans';font-size:.58rem;color:var(--fg-muted);margin-bottom:2px;"><span>hunger</span><span id="pet-hunger-val">0</span></div>
+              <div style="height:9px;border:2px solid var(--ink);border-radius:5px;background:var(--bg-inset);overflow:hidden;"><div id="pet-hunger-fill" style="height:100%;width:0;background:var(--success);transition:width .3s;"></div></div>
+            </div>
+            <div style="flex:1;">
+              <div style="display:flex;justify-content:space-between;font-family:'Pixelify Sans';font-size:.58rem;color:var(--fg-muted);margin-bottom:2px;"><span>happiness</span><span id="pet-happy-val">0</span></div>
+              <div style="height:9px;border:2px solid var(--ink);border-radius:5px;background:var(--bg-inset);overflow:hidden;"><div id="pet-happy-fill" style="height:100%;width:0;background:var(--success);transition:width .3s;"></div></div>
+            </div>
+            <div style="flex:1;">
+              <div style="display:flex;justify-content:space-between;font-family:'Pixelify Sans';font-size:.58rem;color:var(--fg-muted);margin-bottom:2px;"><span>energy</span><span id="pet-energy-val">0</span></div>
+              <div style="height:9px;border:2px solid var(--ink);border-radius:5px;background:var(--bg-inset);overflow:hidden;"><div id="pet-energy-fill" style="height:100%;width:0;background:var(--success);transition:width .3s;"></div></div>
+            </div>
           </div>
-          <div>
-            <div style="display:flex;justify-content:space-between;font-family:'Pixelify Sans';font-size:.62rem;color:var(--fg-muted);margin-bottom:2px;"><span>energy</span><span id="pet-energy-val">0</span></div>
-            <div style="height:11px;border:2px solid var(--ink);border-radius:6px;background:var(--bg-inset);overflow:hidden;"><div id="pet-energy-fill" style="height:100%;width:0;background:var(--success);transition:width .3s;"></div></div>
-          </div>
-          <div style="display:flex;gap:7px;margin-top:5px;">
+          <div style="display:flex;gap:7px;">
             <button id="pet-feed" style="flex:1;font-family:'Pixelify Sans';font-size:.8rem;color:var(--on-accent);background:var(--accent);border:2px solid var(--ink);border-radius:9px;box-shadow:2px 2px 0 var(--shadow);padding:9px 4px;cursor:pointer;">Feed</button>
             <button id="pet-play" style="flex:1;font-family:'Pixelify Sans';font-size:.8rem;color:var(--on-accent);background:var(--accent-2);border:2px solid var(--ink);border-radius:9px;box-shadow:2px 2px 0 var(--shadow);padding:9px 4px;cursor:pointer;">Play</button>
             <button id="pet-rest" style="flex:1;font-family:'Pixelify Sans';font-size:.8rem;color:var(--fg-strong);background:var(--bg-1);border:2px solid var(--ink);border-radius:9px;box-shadow:2px 2px 0 var(--shadow);padding:9px 4px;cursor:pointer;">Rest</button>
@@ -794,6 +796,7 @@
       </div>`;
 
     var host, box, canvas, ctx, raf = null, timer = null, dpr = 1;
+    var sceneW = 0, sceneH = 0, floorY = 0;   // habitat dimensions (measured, responsive)
     var pet = null, note = '', phase = 0, bounce = 0, uiAcc = 0;
     var resting = false, restStart = 0, restFrom = 0, restTo = 0;
     var cd = { feed: 0, play: 0, rest: 0 };
@@ -926,29 +929,88 @@
       else if (m === 'sleepy') { ctx.moveTo(cx - 5, my); ctx.lineTo(cx + 5, my); ctx.stroke(); }
       else if (m === 'sleeping') { ctx.arc(cx, my - 1, 5, 0, Math.PI * 2); ctx.stroke(); }
     }
+    // ---- habitat: measure the responsive scene, then draw room + props + slime ----
+    function sizeScene() {
+      if (!canvas) return;
+      var W = canvas.clientWidth, H = canvas.clientHeight;
+      if (!W || !H) return;                 // not laid out yet
+      var bw = Math.round(W * dpr), bh = Math.round(H * dpr);
+      if (canvas.width !== bw || canvas.height !== bh) {
+        canvas.width = bw; canvas.height = bh; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      sceneW = W; sceneH = H; floorY = Math.round(H * 0.62);
+    }
+    function drawWindow() {
+      var w = Math.min(96, sceneW * 0.2), x = Math.round(sceneW * 0.07), y = 16, h = 50;
+      ctx.fillStyle = col('--accent-soft'); rr(x, y, w, h, 4); ctx.fill();
+      ctx.strokeStyle = col('--ink'); ctx.lineWidth = 3; ctx.stroke();
+      ctx.lineWidth = 2; ctx.beginPath();
+      ctx.moveTo(x + w / 2, y); ctx.lineTo(x + w / 2, y + h);
+      ctx.moveTo(x, y + h / 2); ctx.lineTo(x + w, y + h / 2); ctx.stroke();
+    }
+    function drawPlant(cx) {
+      var by = floorY, pw = 26, ph = 22;
+      ctx.fillStyle = mix(col('--accent-2'), col('--ink'), 0.18); ctx.strokeStyle = col('--ink'); ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(cx - pw / 2, by - ph); ctx.lineTo(cx - pw / 2 + 4, by);
+      ctx.lineTo(cx + pw / 2 - 4, by); ctx.lineTo(cx + pw / 2, by - ph); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = col('--accent-2');
+      var lv = [[-9, -8, -0.5], [0, -18, 0], [9, -8, 0.5]];
+      for (var i = 0; i < lv.length; i++) {
+        ctx.save(); ctx.translate(cx + lv[i][0], by - ph + lv[i][1]); ctx.rotate(lv[i][2]);
+        ctx.beginPath(); ctx.ellipse(0, 0, 7, 15, 0, 0, 6.3); ctx.fill(); ctx.restore();
+      }
+    }
+    function drawBowl(cx) {
+      var by = floorY, w = 46, h = 15;
+      ctx.fillStyle = mix(col('--accent'), col('--ink'), 0.08);            // kibble
+      ctx.beginPath(); ctx.ellipse(cx, by - h + 3, w * 0.34, 4.5, 0, 0, 6.3); ctx.fill();
+      ctx.fillStyle = col('--bg-2'); ctx.strokeStyle = col('--ink'); ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(cx - w / 2, by - h); ctx.lineTo(cx - w / 2 + 6, by);
+      ctx.lineTo(cx + w / 2 - 6, by); ctx.lineTo(cx + w / 2, by - h); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(cx, by - h, w / 2, 4.5, 0, 0, 6.3); ctx.fillStyle = col('--bg-1'); ctx.fill(); ctx.stroke();
+    }
+    function drawBed(cx) {
+      var by = floorY, w = 66, h = 19;
+      ctx.fillStyle = mix(col('--accent-soft'), col('--bg-1'), 0.2); ctx.strokeStyle = col('--ink'); ctx.lineWidth = 2.5;
+      rr(cx - w / 2, by - h, w, h, 9); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = col('--bg-1'); rr(cx - w / 2 + 7, by - h + 4, 24, h - 9, 5); ctx.fill(); ctx.stroke();
+    }
+    function drawScene() {
+      ctx.clearRect(0, 0, sceneW, sceneH);
+      ctx.fillStyle = col('--bg-2'); ctx.fillRect(0, 0, sceneW, floorY);                                   // wall
+      ctx.fillStyle = mix(col('--bg-inset'), col('--ink'), 0.05); ctx.fillRect(0, floorY, sceneW, sceneH - floorY);  // floor
+      ctx.strokeStyle = mix(col('--ink'), col('--bg-2'), 0.35); ctx.lineWidth = 2;                         // baseboard
+      ctx.beginPath(); ctx.moveTo(0, floorY + 1); ctx.lineTo(sceneW, floorY + 1); ctx.stroke();
+      drawWindow();
+      drawPlant(Math.round(sceneW * 0.07));
+      drawBowl(Math.round(sceneW * 0.24));
+      drawBed(Math.round(sceneW * 0.82));
+    }
     function drawPet() {
-      if (!ctx) return;
-      var m = mood(), W = 160, cx = 80;
-      ctx.clearRect(0, 0, W, W);
+      var m = mood(), cx = Math.round(sceneW * 0.5);
       var breathe = reduceMotion ? 0 : Math.sin(phase) * 3;
-      var hop = (bounce > 0 && !reduceMotion) ? Math.sin((1 - bounce) * Math.PI) * 22 : 0;
-      var happyBob = (m === 'happy' && !reduceMotion) ? Math.abs(Math.sin(phase * 1.4)) * 7 : 0;
-      var slump = (m === 'sleepy' || m === 'sleeping' || m === 'hungry') ? 8 : 0;
-      var w = 104 + breathe + (slump ? 10 : 0);
-      var h = 96 - breathe - slump;
-      var base = 128 - hop - happyBob;
-      ctx.fillStyle = 'rgba(0,0,0,.14)';
-      ctx.beginPath(); ctx.ellipse(cx, 134, w * 0.5, 7, 0, 0, 6.3); ctx.fill();
+      var hop = (bounce > 0 && !reduceMotion) ? Math.sin((1 - bounce) * Math.PI) * 20 : 0;
+      var happyBob = (m === 'happy' && !reduceMotion) ? Math.abs(Math.sin(phase * 1.4)) * 6 : 0;
+      var slump = (m === 'sleepy' || m === 'sleeping' || m === 'hungry') ? 7 : 0;
+      var w = 96 + breathe + (slump ? 10 : 0);
+      var h = 86 - breathe - slump;
+      var base = floorY + 7 - hop - happyBob;                            // bottom rests on the floor
+      ctx.fillStyle = 'rgba(0,0,0,.16)'; ctx.beginPath(); ctx.ellipse(cx, floorY + 8, w * 0.5, 6, 0, 0, 6.3); ctx.fill();
       ctx.lineWidth = 3; ctx.strokeStyle = col('--ink'); ctx.fillStyle = bodyColor(m);
-      rr(cx - w / 2, base - h, w, h, Math.min(30, h / 2)); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = 'rgba(255,255,255,.18)';
-      rr(cx - w / 2 + 14, base - h + 10, w - 28, 12, 6); ctx.fill();
+      rr(cx - w / 2, base - h, w, h, Math.min(28, h / 2)); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.18)'; rr(cx - w / 2 + 13, base - h + 9, w - 26, 11, 6); ctx.fill();
       drawFace(m, cx, base - h * 0.58);
       if (m === 'sleeping') {
         ctx.fillStyle = col('--fg-muted');
-        ctx.font = "12px 'Pixelify Sans', monospace"; ctx.fillText('z', cx + w / 2 - 6, base - h + 2);
-        ctx.font = "9px 'Pixelify Sans', monospace"; ctx.fillText('z', cx + w / 2 + 3, base - h - 8);
+        ctx.font = "12px 'Pixelify Sans', monospace"; ctx.fillText('z', cx + w / 2 - 4, base - h + 2);
+        ctx.font = "9px 'Pixelify Sans', monospace"; ctx.fillText('z', cx + w / 2 + 5, base - h - 8);
       }
+    }
+    function render() {
+      if (!sceneW) sizeScene();
+      if (!sceneW || !ctx) return;
+      drawScene();
+      drawPet();
     }
 
     // ---- UI ----
@@ -985,7 +1047,7 @@
       if (!reduceMotion) phase += 0.06;
       if (bounce > 0) bounce = Math.max(0, bounce - 0.05);
       endRestIfDue(now);
-      drawPet();
+      render();
       if (++uiAcc >= 12) { uiAcc = 0; refresh(); }   // ~5Hz UI refresh (cooldowns, rest energy)
       raf = requestAnimationFrame(tick);
     }
@@ -994,6 +1056,7 @@
       // rest here too — otherwise a Rest started before tabbing away could stay stuck.
       var now = Date.now();
       if (resting) endRestIfDue(now); else applyDecay(now);
+      sizeScene();          // pick up a viewport/panel resize
       save(); refresh();
     }
 
@@ -1009,9 +1072,9 @@
       note = firstVisit ? 'A new slime! Feed and play to keep it happy.' : comeback(before, pet, elapsed);
       resting = false; bounce = 0; phase = 0; uiAcc = 0; cd = { feed: 0, play: 0, rest: 0 };
       container.innerHTML = PET_HTML;
-      canvas = $c('#pet-canvas'); ctx = canvas.getContext('2d');
+      canvas = $c('#pet-scene'); ctx = canvas.getContext('2d');
       dpr = Math.min(2, window.devicePixelRatio || 1);
-      canvas.width = 160 * dpr; canvas.height = 160 * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      sceneW = 0; sceneH = 0; floorY = 0; sizeScene();
       cacheEls();
       els.feed.addEventListener('click', feed);
       els.play.addEventListener('click', play);
