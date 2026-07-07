@@ -763,7 +763,7 @@
     var REST_MS = 6000, REST_ENERGY = 42;    // Rest -> +energy over one short sleep
     var COOLDOWN_MS = 3500;                  // per-action cooldown (anti-spam)
     var LOW_HUNGER = 30, LOW_ENERGY = 25, HIGH_HAPPY = 78;  // mood thresholds
-    var SCHEMA = 1;
+    var SCHEMA = 2;   // v2 adds xp/stage/unlocks/equipped (Part C)
 
     // ---- Part B: autonomy + personality tunables ----
     var WALK_SPEED = 34;         // px/sec the slime strolls across the floor
@@ -776,14 +776,55 @@
     var PET_HAPPY = 3, PET_CD = 1100;             // click-to-pet happiness + cooldown
     var CARE_GOO = 3;            // goo granted per Feed/Play/Rest into the shared clicker balance
 
+    // ---- Part C: evolution / foods / accessories (data-driven — add rows to extend) ----
+    var STAGES = [
+      { id: 'blob',  name: 'Blob',       xp: 0,   scale: 0.80 },
+      { id: 'slime', name: 'Slime',      xp: 70,  scale: 1.00 },
+      { id: 'king',  name: 'Slime King', xp: 220, scale: 1.10, crest: true }
+    ];
+    var FOODS = [
+      { id: 'berry', name: 'Sweet Berry', cost: 12, eff: { happiness: 22, hunger: 6 },              xp: 8,  bubble: '♥' },
+      { id: 'fizz',  name: 'Fizz Pop',    cost: 15, eff: { energy: 26, hunger: 4 },                 xp: 8,  bubble: '⚡' },
+      { id: 'feast', name: 'Big Feast',   cost: 32, eff: { hunger: 46, happiness: 10, energy: 10 }, xp: 16, bubble: 'yum!!' }
+    ];
+    var ACCESSORIES = [
+      { id: 'hat',  name: 'Party Hat',  cost: 35 },
+      { id: 'bow',  name: 'Red Bow',    cost: 28 },
+      { id: 'tint', name: 'Berry Skin', cost: 60, tint: ['--accent-2', 0.5] }
+    ];
+    var CARE_XP = { feed: 5, play: 6, rest: 4, pet: 2 };   // evolution xp from free care
+    var CELEB_MS = 2600;                                   // evolve-celebration length
+    function stageForXp(x) { var s = 0; for (var i = 0; i < STAGES.length; i++) if (x >= STAGES[i].xp) s = i; return s; }
+    function accById(id) { for (var i = 0; i < ACCESSORIES.length; i++) if (ACCESSORIES[i].id === id) return ACCESSORIES[i]; return null; }
+
     var PET_HTML = `
       <div style="display:flex;flex-direction:column;">
-        <canvas id="pet-scene" style="display:block;width:100%;height:188px;"></canvas>
-        <div style="padding:11px 13px 13px;display:flex;flex-direction:column;gap:9px;background:var(--bg-1);border-top:2px solid var(--ink);">
-          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;min-height:1.2em;">
-            <div id="pet-mood" style="flex:0 0 auto;font-family:'Pixelify Sans';font-size:.78rem;letter-spacing:1px;color:var(--accent);text-transform:uppercase;">content</div>
-            <div id="pet-note" role="status" aria-live="polite" style="flex:1;min-width:0;font-family:'Pixelify Sans';font-size:.7rem;color:var(--fg-muted);text-align:right;line-height:1.2;">&nbsp;</div>
+        <div style="position:relative;">
+          <canvas id="pet-scene" style="display:block;width:100%;height:188px;"></canvas>
+          <div id="pet-shop-panel" hidden style="position:absolute;inset:0;overflow-y:auto;background:var(--bg-1);padding:11px 13px;font-family:'Pixelify Sans';">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <div style="font-size:.86rem;color:var(--fg-strong);">▸ Slime Shop</div>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:.72rem;color:var(--accent);white-space:nowrap;">⬤ <span id="pet-shop-goo">0</span> goo</span>
+                <button id="pet-shop-close" aria-label="Close shop" style="width:26px;height:26px;border:2px solid var(--ink);background:var(--bg);color:var(--fg-strong);border-radius:7px;cursor:pointer;">✕</button>
+              </div>
+            </div>
+            <div id="pet-evo" style="font-size:.62rem;color:var(--fg-muted);margin-bottom:9px;"></div>
+            <div style="font-size:.58rem;letter-spacing:1px;color:var(--fg-muted);margin-bottom:4px;">FOODS</div>
+            <div id="pet-foods" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+            <div style="font-size:.58rem;letter-spacing:1px;color:var(--fg-muted);margin-bottom:4px;">ACCESSORIES</div>
+            <div id="pet-accs" style="display:flex;flex-direction:column;gap:6px;"></div>
           </div>
+        </div>
+        <div style="padding:11px 13px 13px;display:flex;flex-direction:column;gap:9px;background:var(--bg-1);border-top:2px solid var(--ink);">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;">
+            <div style="display:flex;align-items:baseline;gap:8px;min-width:0;">
+              <span id="pet-stage" style="flex:0 0 auto;font-family:'Pixelify Sans';font-size:.64rem;letter-spacing:1px;color:var(--accent-2);text-transform:uppercase;">slime</span>
+              <span id="pet-mood" style="font-family:'Pixelify Sans';font-size:.76rem;letter-spacing:1px;color:var(--accent);text-transform:uppercase;">content</span>
+            </div>
+            <span id="pet-goo" style="flex:0 0 auto;font-family:'Pixelify Sans';font-size:.72rem;color:var(--accent);white-space:nowrap;">⬤ 0</span>
+          </div>
+          <div id="pet-note" role="status" aria-live="polite" style="font-family:'Pixelify Sans';font-size:.68rem;color:var(--fg-muted);line-height:1.2;min-height:1em;">&nbsp;</div>
           <div style="display:flex;gap:10px;">
             <div style="flex:1;">
               <div style="display:flex;justify-content:space-between;font-family:'Pixelify Sans';font-size:.58rem;color:var(--fg-muted);margin-bottom:2px;"><span>hunger</span><span id="pet-hunger-val">0</span></div>
@@ -798,10 +839,11 @@
               <div style="height:9px;border:2px solid var(--ink);border-radius:5px;background:var(--bg-inset);overflow:hidden;"><div id="pet-energy-fill" style="height:100%;width:0;background:var(--success);transition:width .3s;"></div></div>
             </div>
           </div>
-          <div style="display:flex;gap:7px;">
-            <button id="pet-feed" style="flex:1;font-family:'Pixelify Sans';font-size:.8rem;color:var(--on-accent);background:var(--accent);border:2px solid var(--ink);border-radius:9px;box-shadow:2px 2px 0 var(--shadow);padding:9px 4px;cursor:pointer;">Feed</button>
-            <button id="pet-play" style="flex:1;font-family:'Pixelify Sans';font-size:.8rem;color:var(--on-accent);background:var(--accent-2);border:2px solid var(--ink);border-radius:9px;box-shadow:2px 2px 0 var(--shadow);padding:9px 4px;cursor:pointer;">Play</button>
-            <button id="pet-rest" style="flex:1;font-family:'Pixelify Sans';font-size:.8rem;color:var(--fg-strong);background:var(--bg-1);border:2px solid var(--ink);border-radius:9px;box-shadow:2px 2px 0 var(--shadow);padding:9px 4px;cursor:pointer;">Rest</button>
+          <div style="display:flex;gap:6px;">
+            <button id="pet-feed" style="flex:1;font-family:'Pixelify Sans';font-size:.78rem;color:var(--on-accent);background:var(--accent);border:2px solid var(--ink);border-radius:9px;box-shadow:2px 2px 0 var(--shadow);padding:9px 3px;cursor:pointer;">Feed</button>
+            <button id="pet-play" style="flex:1;font-family:'Pixelify Sans';font-size:.78rem;color:var(--on-accent);background:var(--accent-2);border:2px solid var(--ink);border-radius:9px;box-shadow:2px 2px 0 var(--shadow);padding:9px 3px;cursor:pointer;">Play</button>
+            <button id="pet-rest" style="flex:1;font-family:'Pixelify Sans';font-size:.78rem;color:var(--fg-strong);background:var(--bg-1);border:2px solid var(--ink);border-radius:9px;box-shadow:2px 2px 0 var(--shadow);padding:9px 3px;cursor:pointer;">Rest</button>
+            <button id="pet-shop-btn" style="flex:1;font-family:'Pixelify Sans';font-size:.78rem;color:var(--fg-strong);background:var(--bg-2);border:2px solid var(--ink);border-radius:9px;box-shadow:2px 2px 0 var(--shadow);padding:9px 3px;cursor:pointer;">Shop</button>
           </div>
         </div>
       </div>`;
@@ -818,17 +860,29 @@
     var idleUntil = 0, lastNow = 0, hopT = 0;
     var bubbleText = '', bubbleUntil = 0;
     var curX = -1, curY = -1;    // cursor in scene coords, -1 when outside
+    // ---- Part C runtime state ----
+    var celebrateUntil = 0, shopOpen = false, shopRows = { foods: [], accs: [] };
 
     function $c(sel) { return box ? box.querySelector(sel) : null; }
     function clamp(v) { return v < 0 ? 0 : v > 100 ? 100 : v; }
-    function fresh() { return { schemaVersion: SCHEMA, hunger: 85, happiness: 100, energy: 95, lastSeen: Date.now() }; }
+    function fresh() { return { schemaVersion: SCHEMA, hunger: 85, happiness: 100, energy: 95, lastSeen: Date.now(), xp: 0, stage: 0, unlocks: [], equipped: null }; }
     function save() { Store.set('pet', pet); }
     function sanitize(o) {
       var n = function (v, d) { return (typeof v === 'number' && isFinite(v)) ? clamp(v) : d; };
+      // Migrate any prior save. A pre-Part-C (v1) record has no xp/stage/unlocks/equipped —
+      // an existing cared-for pet defaults to the Slime stage rather than regressing to a Blob.
+      var validStage = (typeof o.stage === 'number' && isFinite(o.stage) && o.stage >= 0 && o.stage < STAGES.length);
+      var xp = (typeof o.xp === 'number' && isFinite(o.xp) && o.xp >= 0) ? o.xp
+        : (validStage ? STAGES[Math.floor(o.stage)].xp : STAGES[1].xp);   // true v1 (no fields) -> Slime baseline
+      var stage = stageForXp(xp);   // stage is always consistent with xp (no over-/under-evolved corruption)
+      var unlocks = [];
+      if (Array.isArray(o.unlocks)) for (var i = 0; i < o.unlocks.length; i++) if (accById(o.unlocks[i]) && unlocks.indexOf(o.unlocks[i]) === -1) unlocks.push(o.unlocks[i]);
+      var equipped = (typeof o.equipped === 'string' && unlocks.indexOf(o.equipped) !== -1) ? o.equipped : null;
       return {
         schemaVersion: SCHEMA,
         hunger: n(o.hunger, 85), happiness: n(o.happiness, 100), energy: n(o.energy, 95),
-        lastSeen: (typeof o.lastSeen === 'number' && isFinite(o.lastSeen)) ? o.lastSeen : Date.now()
+        lastSeen: (typeof o.lastSeen === 'number' && isFinite(o.lastSeen)) ? o.lastSeen : Date.now(),
+        xp: xp, stage: stage, unlocks: unlocks, equipped: equipped
       };
     }
 
@@ -849,10 +903,11 @@
     }
     function bodyColor(m) {
       var acc = col('--accent');
-      if (m === 'hungry') return mix(acc, col('--fg-muted'), 0.4);
-      if (m === 'sleepy' || m === 'sleeping') return mix(acc, col('--bg-2'), 0.45);
-      if (m === 'happy') return mix(acc, col('--accent-2'), 0.25);
-      return acc;
+      var b = (m === 'hungry') ? mix(acc, col('--fg-muted'), 0.4)
+        : (m === 'sleepy' || m === 'sleeping') ? mix(acc, col('--bg-2'), 0.45)
+        : (m === 'happy') ? mix(acc, col('--accent-2'), 0.25) : acc;
+      var t = equippedTint();
+      return t ? mix(b, col(t[0]), t[1]) : b;   // equipped colour-variant accessory
     }
 
     // ---- real-time decay + mood ----
@@ -888,7 +943,7 @@
       applyDecay(Date.now());
       pet.hunger = clamp(pet.hunger + FEED_GAIN);
       cd.feed = Date.now() + COOLDOWN_MS; note = ''; bounce = reduceMotion ? 0 : 1;
-      say('yum!', 1400); earnGoo(CARE_GOO);
+      say('yum!', 1400); earnGoo(CARE_GOO); addXp(CARE_XP.feed);
       save(); refresh();
     }
     function play() {
@@ -898,7 +953,7 @@
       pet.happiness = clamp(pet.happiness + PLAY_HAPPY);
       pet.energy = clamp(pet.energy - PLAY_ENERGY_COST);
       cd.play = Date.now() + COOLDOWN_MS; note = ''; bounce = reduceMotion ? 0 : 1;
-      say('yay!', 1400); earnGoo(CARE_GOO);
+      say('yay!', 1400); earnGoo(CARE_GOO); addXp(CARE_XP.play);
       save(); refresh();
     }
     function rest() {
@@ -906,7 +961,7 @@
       applyDecay(Date.now());
       note = '';
       var target = clamp(pet.energy + REST_ENERGY);
-      earnGoo(CARE_GOO);
+      earnGoo(CARE_GOO); addXp(CARE_XP.rest);
       if (reduceMotion) { pet.energy = target; cd.rest = Date.now() + COOLDOWN_MS; save(); refresh(); return; }
       resting = true; restStart = Date.now(); restFrom = pet.energy; restTo = target;
       refresh();
@@ -983,7 +1038,7 @@
       var dx = x - slimeX, dy = y - (floorY - 40);
       if (dx * dx + dy * dy > 62 * 62) return;                   // only if the click landed on the slime
       cd.pet = Date.now() + PET_CD;
-      if (behavior !== 'sleep') { pet.happiness = clamp(pet.happiness + PET_HAPPY); save(); refresh(); }
+      if (behavior !== 'sleep') { pet.happiness = clamp(pet.happiness + PET_HAPPY); addXp(CARE_XP.pet); save(); refresh(); }
       if (!reduceMotion) { bounce = 1; say('♥', 1100); }
     }
     function onPointer(e) {
@@ -994,6 +1049,104 @@
     }
     function onLeave() { curX = -1; curY = -1; }
     function onDown(e) { onPointer(e); if (curX >= 0) petAt(curX, curY); }
+
+    // ---- Part C: xp / evolution, shared-goo shop, foods & accessories ----
+    function addXp(n) {
+      pet.xp = (pet.xp || 0) + n;
+      var s = stageForXp(pet.xp);
+      if (s > (pet.stage || 0)) { pet.stage = s; celebrate(s); }
+    }
+    function celebrate(s) {
+      var nm = (STAGES[s] || STAGES[0]).name;
+      if (reduceMotion) { note = 'Evolved into ' + nm + '!'; }
+      else { celebrateUntil = Date.now() + CELEB_MS; say('★ ' + nm + '! ★', CELEB_MS); }
+    }
+    function equippedTint() { var a = accById(pet && pet.equipped); return (a && a.tint) ? a.tint : null; }
+    function goo() { var g = Store.get('goo-farm', null); return (g && typeof g === 'object' && typeof g.goo === 'number' && isFinite(g.goo)) ? g.goo : 0; }
+    function spendGoo(n) {
+      var g = Store.get('goo-farm', null);
+      if (!g || typeof g !== 'object') g = { goo: 0, click: 1, auto: 0, mult: 1, lv: { poke: 0, spawn: 0, mult: 0 } };
+      var have = (typeof g.goo === 'number' && isFinite(g.goo)) ? g.goo : 0;
+      if (have < n) return false;
+      g.goo = have - n; Store.set('goo-farm', g); return true;
+    }
+    function fmtGoo(g) { return String(Math.floor(g)); }
+    function buyFood(f) {
+      if (!spendGoo(f.cost)) { note = 'Need ' + f.cost + ' goo for ' + f.name + '.'; refresh(); return; }
+      applyDecay(Date.now());
+      if (f.eff.hunger) pet.hunger = clamp(pet.hunger + f.eff.hunger);
+      if (f.eff.happiness) pet.happiness = clamp(pet.happiness + f.eff.happiness);
+      if (f.eff.energy) {
+        pet.energy = clamp(pet.energy + f.eff.energy);
+        if (resting) { restFrom = clamp(restFrom + f.eff.energy); restTo = clamp(restTo + f.eff.energy); }   // carry the boost through an in-progress rest
+      }
+      note = 'Fed ' + f.name + '!';                 // aria-live announcement (reduced-motion has no bubble)
+      addXp(f.xp); bounce = reduceMotion ? 0 : 1; say(f.bubble, 1500);
+      save(); refresh();
+    }
+    function buyAcc(a) {
+      if (pet.unlocks.indexOf(a.id) !== -1) return;
+      if (!spendGoo(a.cost)) { note = 'Need ' + a.cost + ' goo for ' + a.name + '.'; refresh(); return; }
+      pet.unlocks.push(a.id); pet.equipped = a.id; note = 'Got the ' + a.name + '!'; save(); refresh();
+    }
+    function equipAcc(id) {
+      if (id && pet.unlocks.indexOf(id) === -1) return;
+      pet.equipped = (pet.equipped === id) ? null : id;
+      var a = accById(pet.equipped);
+      note = a ? ('Wearing the ' + a.name) : 'Accessory off.';
+      save(); refresh();
+    }
+    function onAccBtn(a) { if (pet.unlocks.indexOf(a.id) === -1) buyAcc(a); else equipAcc(a.id); }
+    function foodDesc(f) {
+      var p = [];
+      if (f.eff.hunger) p.push('+' + f.eff.hunger + ' hunger');
+      if (f.eff.happiness) p.push('+' + f.eff.happiness + ' happy');
+      if (f.eff.energy) p.push('+' + f.eff.energy + ' energy');
+      return p.join(' · ') + ' · +' + f.xp + ' xp';
+    }
+    function accDesc(a) { return a.tint ? 'colour variant' : 'cosmetic'; }
+    function shopRow(name, desc) {
+      var el = document.createElement('div');
+      el.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bg);border:2px solid var(--ink);border-radius:8px;padding:6px 8px;';
+      var left = document.createElement('div'); left.style.cssText = 'min-width:0;';
+      var nm = document.createElement('div'); nm.style.cssText = 'font-size:.72rem;color:var(--fg-strong);'; nm.textContent = name;
+      var ds = document.createElement('div'); ds.style.cssText = 'font-size:.56rem;color:var(--fg-muted);'; ds.textContent = desc;
+      left.appendChild(nm); left.appendChild(ds);
+      var right = document.createElement('div'); right.style.cssText = 'display:flex;align-items:center;gap:8px;flex-shrink:0;';
+      var cost = document.createElement('span'); cost.style.cssText = 'font-size:.62rem;color:var(--accent);white-space:nowrap;';
+      var btn = document.createElement('button');
+      btn.style.cssText = "font-family:'Pixelify Sans';font-size:.68rem;color:var(--on-accent);background:var(--accent);border:2px solid var(--ink);border-radius:7px;padding:5px 9px;cursor:pointer;";
+      right.appendChild(cost); right.appendChild(btn);
+      el.appendChild(left); el.appendChild(right);
+      return { el: el, btn: btn, cost: cost };
+    }
+    function renderShop() {
+      var fw = $c('#pet-foods');
+      if (fw) { fw.innerHTML = ''; shopRows.foods = FOODS.map(function (f) { var r = shopRow(f.name, foodDesc(f)); r.btn.textContent = 'Buy'; r.btn.addEventListener('click', function () { buyFood(f); }); fw.appendChild(r.el); return { data: f, btn: r.btn, cost: r.cost }; }); }
+      var aw = $c('#pet-accs');
+      if (aw) { aw.innerHTML = ''; shopRows.accs = ACCESSORIES.map(function (a) { var r = shopRow(a.name, accDesc(a)); r.btn.addEventListener('click', function () { onAccBtn(a); }); aw.appendChild(r.el); return { data: a, btn: r.btn, cost: r.cost }; }); }
+    }
+    function refreshShop() {
+      var g = goo();
+      var sg = $c('#pet-shop-goo'); if (sg) sg.textContent = fmtGoo(g);
+      var evo = $c('#pet-evo');
+      if (evo) {
+        var st = STAGES[pet.stage] || STAGES[0], next = STAGES[(pet.stage || 0) + 1];
+        evo.textContent = next ? (st.name + ' — ' + Math.floor(pet.xp || 0) + ' / ' + next.xp + ' xp to ' + next.name)
+          : (st.name + ' — top form! (' + Math.floor(pet.xp || 0) + ' xp)');
+      }
+      shopRows.foods.forEach(function (r) { r.cost.textContent = r.data.cost + ' goo'; setBtn(r.btn, g >= r.data.cost); });
+      shopRows.accs.forEach(function (r) {
+        var owned = pet.unlocks.indexOf(r.data.id) !== -1;
+        if (owned) { r.cost.textContent = 'owned'; r.btn.textContent = pet.equipped === r.data.id ? 'Worn' : 'Wear'; setBtn(r.btn, true); }
+        else { r.cost.textContent = r.data.cost + ' goo'; r.btn.textContent = 'Buy'; setBtn(r.btn, g >= r.data.cost); }
+      });
+    }
+    function toggleShop(open) {
+      shopOpen = (open === undefined) ? !shopOpen : !!open;
+      var sh = $c('#pet-shop-panel'); if (sh) sh.hidden = !shopOpen;
+      if (shopOpen) refreshShop();
+    }
 
     // ---- render ----
     function rr(x, y, w, h, r) {
@@ -1093,11 +1246,13 @@
       var air = hopArc * 15 + playArc * 20;
       var happyBob = (m === 'happy' && !reduceMotion) ? Math.abs(Math.sin(phase * 1.4)) * 5 : 0;
       var slump = (m === 'sleepy' || onBed || m === 'hungry') ? 7 : 0;
-      var w = (onBed ? 110 : 96) - stretch * 11 + breathe + (slump ? 10 : 0);
-      var h = (onBed ? 66 : 86) + stretch * 15 - breathe - slump;
+      var sc = (STAGES[pet.stage] || STAGES[0]).scale;                  // evolution size
+      var w = (onBed ? 110 : 96) * sc - stretch * 11 + breathe + (slump ? 10 : 0);
+      var h = (onBed ? 66 : 86) * sc + stretch * 15 - breathe - slump;
       var cx = Math.round(Math.max(w / 2, Math.min(sceneW - w / 2, sx)));      // keep the whole body on-canvas
       slimeDrawX = cx;
       var groundY = onBed ? floorY - 9 : floorY + 7;                     // nap on the bed cushion
+      air = Math.min(air, Math.max(0, groundY - h - happyBob - 2));      // cap the hop so the (scaled) body never clips the top
       var base = groundY - air - happyBob;
       slimeTopY = base - h;
       ctx.fillStyle = 'rgba(0,0,0,.16)'; ctx.beginPath(); ctx.ellipse(cx, floorY + 8, w * (onBed ? 0.42 : 0.5), 6, 0, 0, 6.3); ctx.fill();
@@ -1105,6 +1260,9 @@
       rr(cx - w / 2, base - h, w, h, Math.min(28, h / 2)); ctx.fill(); ctx.stroke();
       ctx.fillStyle = 'rgba(255,255,255,.18)'; rr(cx - w / 2 + 13, base - h + 9, w - 26, 11, 6); ctx.fill();
       drawFace(m, cx, base - h * 0.58);
+      if ((STAGES[pet.stage] || STAGES[0]).crest) drawCrest(cx, base - h);   // Slime King crown
+      if (pet.equipped === 'hat') drawHat(cx, base - h);
+      else if (pet.equipped === 'bow') drawBow(cx, base - h);
       if (m === 'sleeping') {
         ctx.fillStyle = col('--fg-muted');
         ctx.font = "12px 'Pixelify Sans', monospace"; ctx.fillText('z', cx + w / 2 - 4, base - h + 2);
@@ -1127,11 +1285,56 @@
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(bubbleText, bx + bw / 2, by + bh / 2);
       ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     }
+    function drawHat(cx, topY) {
+      var hw = 24, hh = 24;
+      if (topY < hh + 2) topY = hh + 2;   // keep the hat on-canvas above a tall King
+      ctx.fillStyle = col('--danger'); ctx.strokeStyle = col('--ink'); ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(cx, topY - hh); ctx.lineTo(cx - hw / 2, topY - 2); ctx.lineTo(cx + hw / 2, topY - 2); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = col('--warn'); ctx.beginPath(); ctx.arc(cx, topY - hh, 4, 0, 6.3); ctx.fill(); ctx.stroke();
+    }
+    function drawBow(cx, topY) {
+      var x = cx + 13, y = topY + 5, s = 8;
+      ctx.fillStyle = col('--danger'); ctx.strokeStyle = col('--ink'); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - s, y - s * 0.7); ctx.lineTo(x - s, y + s * 0.7); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + s, y - s * 0.7); ctx.lineTo(x + s, y + s * 0.7); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = col('--warn'); ctx.beginPath(); ctx.arc(x, y, 3, 0, 6.3); ctx.fill(); ctx.stroke();
+    }
+    function drawCrest(cx, topY) {
+      if (topY < 13) topY = 13;           // keep the crown on-canvas
+      var y = topY - 2, w = 22;
+      ctx.fillStyle = col('--warn'); ctx.strokeStyle = col('--ink'); ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx - w / 2, y); ctx.lineTo(cx - w / 2, y - 8); ctx.lineTo(cx - w / 4, y - 2);
+      ctx.lineTo(cx, y - 11); ctx.lineTo(cx + w / 4, y - 2); ctx.lineTo(cx + w / 2, y - 8); ctx.lineTo(cx + w / 2, y);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+    function drawStar(x, y, r) {
+      ctx.beginPath();
+      for (var i = 0; i < 5; i++) {
+        var a = i * 1.25664 - 1.5708;
+        ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
+        ctx.lineTo(x + Math.cos(a + 0.6283) * r * 0.45, y + Math.sin(a + 0.6283) * r * 0.45);
+      }
+      ctx.closePath(); ctx.fill();
+    }
+    function drawCelebrate() {
+      if (reduceMotion || Date.now() >= celebrateUntil) return;
+      var t = 1 - (celebrateUntil - Date.now()) / CELEB_MS;   // 0..1
+      var cx = slimeDrawX || sceneW * 0.5, cy = slimeTopY - 4, n = 9;
+      for (var i = 0; i < n; i++) {
+        var ang = (i / n) * 6.2832 + t * 1.6, rad = 12 + t * 48;
+        ctx.globalAlpha = Math.max(0, 1 - t);
+        ctx.fillStyle = i % 2 ? col('--warn') : col('--accent-2');
+        drawStar(cx + Math.cos(ang) * rad, cy + Math.sin(ang) * rad * 0.7, 3 + (1 - t) * 3);
+      }
+      ctx.globalAlpha = 1;
+    }
     function render() {
       if (!sceneW) sizeScene();
       if (!sceneW || !ctx) return;
       drawScene();
       drawPet();
+      drawCelebrate();
       drawBubble();
     }
 
@@ -1142,6 +1345,7 @@
       els.pf = $c('#pet-happy-fill'); els.pv = $c('#pet-happy-val');
       els.ef = $c('#pet-energy-fill'); els.ev = $c('#pet-energy-val');
       els.feed = $c('#pet-feed'); els.play = $c('#pet-play'); els.rest = $c('#pet-rest');
+      els.stage = $c('#pet-stage'); els.goo = $c('#pet-goo');
     }
     function barColor(v) { return v >= 50 ? 'var(--success)' : v >= 25 ? 'var(--warn)' : 'var(--danger)'; }
     function setBar(fill, val, v) { v = Math.round(v); if (fill) { fill.style.width = v + '%'; fill.style.background = barColor(v); } if (val) val.textContent = v; }
@@ -1159,6 +1363,9 @@
         els.mood.style.color = m === 'hungry' ? 'var(--warn)' : (m === 'sleepy' || m === 'sleeping') ? 'var(--fg-muted)' : 'var(--accent)';
       }
       if (els.note) els.note.textContent = note || ' ';
+      if (els.stage) els.stage.textContent = (STAGES[pet.stage] || STAGES[0]).name;
+      if (els.goo) els.goo.textContent = '⬤ ' + fmtGoo(goo());
+      refreshShop();
       setBtn(els.feed, now >= cd.feed && !resting);
       setBtn(els.play, now >= cd.play && !resting && pet.energy >= PLAY_MIN_ENERGY);
       setBtn(els.rest, now >= cd.rest && !resting);
@@ -1188,7 +1395,7 @@
     function mount(container, hostApi) {
       host = hostApi; box = container;
       behavior = 'idle'; resting = false; curX = -1; curY = -1; bubbleText = ''; bubbleUntil = 0;
-      slimeX = 0; hopT = 0; bounce = 0; phase = 0; uiAcc = 0; lastNow = 0;
+      slimeX = 0; hopT = 0; bounce = 0; phase = 0; uiAcc = 0; lastNow = 0; celebrateUntil = 0; shopOpen = false;
       cd = { feed: 0, play: 0, rest: 0, pet: 0 };
       var loaded = Store.get('pet', null);
       var firstVisit = !loaded || typeof loaded !== 'object';
@@ -1205,9 +1412,12 @@
       sceneW = 0; sceneH = 0; floorY = 0; sizeScene();
       slimeX = sceneW ? sceneW * 0.5 : 0;
       cacheEls();
+      renderShop();
       els.feed.addEventListener('click', feed);
       els.play.addEventListener('click', play);
       els.rest.addEventListener('click', rest);
+      var shopBtn = $c('#pet-shop-btn'); if (shopBtn) shopBtn.addEventListener('click', function () { toggleShop(); });
+      var shopClose = $c('#pet-shop-close'); if (shopClose) shopClose.addEventListener('click', function () { toggleShop(false); });
       canvas.addEventListener('pointermove', onPointer);
       canvas.addEventListener('pointerleave', onLeave);
       canvas.addEventListener('pointerdown', onDown);
@@ -1222,16 +1432,16 @@
     }
     function reset() {
       pet = fresh(); resting = false; behavior = 'idle'; bounce = 0; hopT = 0;
-      bubbleText = ''; bubbleUntil = 0; note = 'Fresh slime!';
+      bubbleText = ''; bubbleUntil = 0; note = 'Fresh slime!'; celebrateUntil = 0;
       cd = { feed: 0, play: 0, rest: 0, pet: 0 };
       slimeX = sceneW ? sceneW * 0.5 : 0; idleUntil = Date.now() + 800;
-      save(); refresh();
+      toggleShop(false); save(); refresh();
     }
     function onKey() { return false; }
 
     return {
       id: 'pet', title: '▸ POCKET SLIME',
-      hint: 'feed · play · rest — keep your slime alive · ◀ ▶ switch · esc to close',
+      hint: 'feed · play · rest · shop — raise your slime · ◀ ▶ switch · esc to close',
       showScore: false, mount: mount, destroy: destroy, onKey: onKey, reset: reset
     };
   }
